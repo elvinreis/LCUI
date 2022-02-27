@@ -2,3 +2,5 @@
 #include "css/library.h"
 #include "css/parser.h"
 #include "css/utils.h"
+#include "css/style_value.h"
+#include "css/value.h"

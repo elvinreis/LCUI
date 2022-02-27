@@ -503,7 +503,7 @@ static const wchar_t *ScanStyleTagData(const wchar_t *wstr,
 		return q;
 	}
 	if ((q = ScanStyleTagByName(p, L"size", tag_data))) {
-		if (!css_parse_number(&tag->style, tag_data)) {
+		if (!css_parse_unit_value(&tag->style, tag_data)) {
 			return NULL;
 		}
 		tag->id = TEXT_STYLE_SIZE;

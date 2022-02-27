@@ -62,7 +62,7 @@ static int split_values(const char *str, css_style_value_t *slist, int max_len,
 			continue;
 		}
 		if (mode & SPLIT_NUMBER) {
-			if (css_parse_number(&slist[vj], values[vj])) {
+			if (css_parse_unit_value(&slist[vj], values[vj])) {
 				DEBUG_MSG("[%d]:parse ok\n", vj);
 				continue;
 			}
@@ -94,7 +94,7 @@ clean:
 	return vi;
 }
 
-static int css_parse_numberic_value(css_style_parser_t *parser, const char *str)
+static int css_parse_unit_valueic_value(css_style_parser_t *parser, const char *str)
 {
 	css_style_value_t s;
 
@@ -107,11 +107,11 @@ static int css_parse_numberic_value(css_style_parser_t *parser, const char *str)
 	return -1;
 }
 
-static int css_parse_number_value(css_style_parser_t *parser, const char *str)
+static int css_parse_unit_value_value(css_style_parser_t *parser, const char *str)
 {
 	css_style_value_t s;
 
-	if (css_parse_number(&s, str)) {
+	if (css_parse_unit_value(&s, str)) {
 		set_current_property(&s);
 		return 0;
 	}
@@ -246,7 +246,7 @@ static int css_parse_border_radius_property(css_style_parser_t *parser,
 {
 	css_style_value_t s;
 
-	if (!css_parse_number(&s, str)) {
+	if (!css_parse_unit_value(&s, str)) {
 		return -1;
 	}
 	set_property(css_key_border_top_left_radius, &s);
@@ -396,7 +396,7 @@ static int css_parse_border_width_property(css_style_parser_t *parser,
 	// border-width: 4px 0;
 	// border-width: 4px 8px 0;
 	// border-width: 4px 0 0 4px;
-	if (!css_parse_number(&s, str)) {
+	if (!css_parse_unit_value(&s, str)) {
 		return -1;
 	}
 	set_property(css_key_border_top_width, &s);
@@ -744,7 +744,7 @@ static int css_parse_flex_basis_property(css_style_parser_t *parser,
 	if (css_parse_keyword_value(parser, str) == 0) {
 		return 0;
 	}
-	if (css_parse_number(&s, str)) {
+	if (css_parse_unit_value(&s, str)) {
 		set_property(css_key_flex_basis, &s);
 		return 0;
 	}
@@ -756,7 +756,7 @@ static int css_parse_flex_grow_property(css_style_parser_t *parser,
 {
 	css_style_value_t s;
 
-	if (css_parse_number(&s, str)) {
+	if (css_parse_unit_value(&s, str)) {
 		set_property(css_key_flex_grow, &s);
 		return 0;
 	}
@@ -768,7 +768,7 @@ static int css_parse_flex_shrink_property(css_style_parser_t *parser,
 {
 	css_style_value_t s;
 
-	if (css_parse_number(&s, str)) {
+	if (css_parse_unit_value(&s, str)) {
 		set_property(css_key_flex_grow, &s);
 		return 0;
 	}
@@ -906,18 +906,18 @@ void css_init_preset_property_parsers(void)
 	css_property_parser.dict = dict_create(&dt, NULL);
 	css_property_parser.count = 0;
 
-	register_parser(css_key_width, NULL, css_parse_number_value);
-	register_parser(css_key_height, NULL, css_parse_number_value);
-	register_parser(css_key_min_width, NULL, css_parse_number_value);
-	register_parser(css_key_min_height, NULL, css_parse_number_value);
-	register_parser(css_key_max_width, NULL, css_parse_number_value);
-	register_parser(css_key_max_height, NULL, css_parse_number_value);
-	register_parser(css_key_top, NULL, css_parse_number_value);
-	register_parser(css_key_right, NULL, css_parse_number_value);
-	register_parser(css_key_bottom, NULL, css_parse_number_value);
-	register_parser(css_key_left, NULL, css_parse_number_value);
-	register_parser(css_key_z_index, NULL, css_parse_numberic_value);
-	register_parser(css_key_opacity, NULL, css_parse_number_value);
+	register_parser(css_key_width, NULL, css_parse_unit_value_value);
+	register_parser(css_key_height, NULL, css_parse_unit_value_value);
+	register_parser(css_key_min_width, NULL, css_parse_unit_value_value);
+	register_parser(css_key_min_height, NULL, css_parse_unit_value_value);
+	register_parser(css_key_max_width, NULL, css_parse_unit_value_value);
+	register_parser(css_key_max_height, NULL, css_parse_unit_value_value);
+	register_parser(css_key_top, NULL, css_parse_unit_value_value);
+	register_parser(css_key_right, NULL, css_parse_unit_value_value);
+	register_parser(css_key_bottom, NULL, css_parse_unit_value_value);
+	register_parser(css_key_left, NULL, css_parse_unit_value_value);
+	register_parser(css_key_z_index, NULL, css_parse_unit_valueic_value);
+	register_parser(css_key_opacity, NULL, css_parse_unit_value_value);
 	register_parser(css_key_position, NULL, css_parse_keyword_value);
 	register_parser(css_key_visibility, NULL,
 			css_parse_visibility_property);
@@ -937,13 +937,13 @@ void css_init_preset_property_parsers(void)
 	register_parser(css_key_border_bottom_color, NULL,
 			css_parse_color_value);
 	register_parser(css_key_border_left_color, NULL, css_parse_color_value);
-	register_parser(css_key_border_top_width, NULL, css_parse_number_value);
+	register_parser(css_key_border_top_width, NULL, css_parse_unit_value_value);
 	register_parser(css_key_border_right_width, NULL,
-			css_parse_number_value);
+			css_parse_unit_value_value);
 	register_parser(css_key_border_bottom_width, NULL,
-			css_parse_number_value);
+			css_parse_unit_value_value);
 	register_parser(css_key_border_left_width, NULL,
-			css_parse_number_value);
+			css_parse_unit_value_value);
 	register_parser(css_key_border_top_style, NULL,
 			css_parse_keyword_value);
 	register_parser(css_key_border_right_style, NULL,
@@ -953,21 +953,21 @@ void css_init_preset_property_parsers(void)
 	register_parser(css_key_border_left_style, NULL,
 			css_parse_keyword_value);
 	register_parser(css_key_border_top_left_radius, NULL,
-			css_parse_number_value);
+			css_parse_unit_value_value);
 	register_parser(css_key_border_top_right_radius, NULL,
-			css_parse_number_value);
+			css_parse_unit_value_value);
 	register_parser(css_key_border_bottom_left_radius, NULL,
-			css_parse_number_value);
+			css_parse_unit_value_value);
 	register_parser(css_key_border_bottom_right_radius, NULL,
-			css_parse_number_value);
-	register_parser(css_key_padding_top, NULL, css_parse_number_value);
-	register_parser(css_key_padding_right, NULL, css_parse_number_value);
-	register_parser(css_key_padding_bottom, NULL, css_parse_number_value);
-	register_parser(css_key_padding_left, NULL, css_parse_number_value);
-	register_parser(css_key_margin_top, NULL, css_parse_number_value);
-	register_parser(css_key_margin_right, NULL, css_parse_number_value);
-	register_parser(css_key_margin_bottom, NULL, css_parse_number_value);
-	register_parser(css_key_margin_left, NULL, css_parse_number_value);
+			css_parse_unit_value_value);
+	register_parser(css_key_padding_top, NULL, css_parse_unit_value_value);
+	register_parser(css_key_padding_right, NULL, css_parse_unit_value_value);
+	register_parser(css_key_padding_bottom, NULL, css_parse_unit_value_value);
+	register_parser(css_key_padding_left, NULL, css_parse_unit_value_value);
+	register_parser(css_key_margin_top, NULL, css_parse_unit_value_value);
+	register_parser(css_key_margin_right, NULL, css_parse_unit_value_value);
+	register_parser(css_key_margin_bottom, NULL, css_parse_unit_value_value);
+	register_parser(css_key_margin_left, NULL, css_parse_unit_value_value);
 	register_parser(css_key_focusable, NULL, css_parse_boolean_value);
 	register_parser(css_key_pointer_events, NULL, css_parse_keyword_value);
 	register_parser(css_key_box_sizing, NULL, css_parse_keyword_value);
@@ -986,11 +986,11 @@ void css_init_preset_property_parsers(void)
 	// css properties for text rendering
 	register_parser(css_key_color, NULL, css_parse_color_value);
 	register_parser(css_key_font_family, NULL, css_parse_string_value);
-	register_parser(css_key_font_size, NULL, css_parse_number_value);
+	register_parser(css_key_font_size, NULL, css_parse_unit_value_value);
 	register_parser(css_key_font_style, NULL,
 			css_parse_font_style_property);
 	register_parser(css_key_text_align, NULL, css_parse_keyword_value);
-	register_parser(css_key_line_height, NULL, css_parse_number_value);
+	register_parser(css_key_line_height, NULL, css_parse_unit_value_value);
 	register_parser(css_key_content, NULL, css_parse_text_value);
 	register_parser(css_key_white_space, NULL, css_parse_keyword_value);
 

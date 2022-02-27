@@ -1,5 +1,5 @@
-﻿#ifndef CSS_INCLUDE_CSS_UTILS_H
-#define CSS_INCLUDE_CSS_UTILS_H
+﻿#ifndef LIBCSS_INCLUDE_CSS_UTILS_H
+#define LIBCSS_INCLUDE_CSS_UTILS_H
 
 #include <LCUI/header.h>
 #include "def.h"
@@ -7,7 +7,7 @@
 LCUI_BEGIN_HEADER
 
 /** 从字符串中解析出数字，支持的单位：点(pt)、像素(px)、百分比(%) */
-LCUI_API LCUI_BOOL css_parse_number(css_unit_value_t *var, const char *str);
+LCUI_API LCUI_BOOL css_parse_unit_value(css_unit_value_t *var, const char *str);
 
 LCUI_API LCUI_BOOL css_parse_rgb(css_unit_value_t *var, const char *str);
 

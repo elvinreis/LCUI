@@ -33,7 +33,7 @@
 #include <string.h>
 #include "../include/css/utils.h"
 
-LCUI_BOOL css_parse_number(css_unit_value_t *s, const char *str)
+LCUI_BOOL css_parse_unit_value(css_unit_value_t *s, const char *str)
 {
 	int n = 0;
 	const char *p;
