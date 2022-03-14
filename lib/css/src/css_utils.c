@@ -33,7 +33,13 @@
 #include <string.h>
 #include "../include/css/utils.h"
 
-LCUI_BOOL css_parse_unit_value(css_unit_value_t *s, const char *str)
+LCUI_BOOL css_parse_numberic_value(css_style_value_t *s, const char *str)
+{
+	s->type = CSS_NUMBERIC_VALUE;
+	return sscanf(str, "%g", s->numberic_value) == 1;
+}
+
+LCUI_BOOL css_parse_unit_value(css_style_value_t *s, const char *str)
 {
 	int n = 0;
 	const char *p;
@@ -66,73 +72,14 @@ LCUI_BOOL css_parse_unit_value(css_unit_value_t *s, const char *str)
 		return FALSE;
 	}
 	num_str[n] = 0;
-	switch (*p) {
-	case 'd':
-	case 'D':
-		s->unit = CSS_UNIT_NONE;
-		if (!p[1]) {
-			break;
-		}
-		if (p[1] == 'p' || p[1] == 'P') {
-			s->unit = CSS_UNIT_DIP;
-			sscanf(num_str, "%f", &s->dip);
-			break;
-		}
-		if (p[1] == 'i' || p[1] == 'I') {
-			if (p[2] == 'p' || p[2] == 'P') {
-				s->unit = CSS_UNIT_DIP;
-				sscanf(num_str, "%f", &s->dip);
-				break;
-			}
-		}
-		break;
-	case 's':
-	case 'S':
-		if (p[1] == 'p' || p[1] == 'P') {
-			s->unit = CSS_UNIT_SP;
-			sscanf(num_str, "%f", &s->sp);
-		} else {
-			s->unit = CSS_UNIT_NONE;
-		}
-		break;
-	case 'P':
-	case 'p':
-		if (p[1] == 'x' || p[1] == 'X') {
-			s->unit = CSS_UNIT_PX;
-			sscanf(num_str, "%f", &s->px);
-		} else if (p[1] == 't' || p[1] == 'T') {
-			s->unit = CSS_UNIT_PT;
-			sscanf(num_str, "%f", &s->pt);
-		} else {
-			s->unit = CSS_UNIT_NONE;
-		}
-		break;
-	case '%':
-		if (1 != sscanf(num_str, "%f", &s->scale)) {
-			return FALSE;
-		}
-		s->scale /= 100.0;
-		s->unit = CSS_UNIT_SCALE;
-		break;
-	case 0:
-		if (has_point && 1 == sscanf(num_str, "%f", &s->scale)) {
-			s->unit = CSS_UNIT_SCALE;
-			break;
-		}
-		if (1 == sscanf(num_str, "%d", &s->val_int)) {
-			s->unit = CSS_UNIT_INT;
-			break;
-		}
-	default:
-		s->unit = CSS_UNIT_NONE;
-		s->is_valid = FALSE;
-		return FALSE;
-	}
-	s->is_valid = TRUE;
+	s->type = CSS_UNIT_VALUE;
+	sscanf(num_str, "%g", &s->unit_value.value);
+	strncpy(s->unit_value.unit, p, 4);
+	s->unit_value.unit[3] = 0;
 	return TRUE;
 }
 
-LCUI_BOOL css_parse_rgba(css_unit_value_t *var, const char *str)
+LCUI_BOOL css_parse_rgba(css_style_value_t *val, const char *str)
 {
 	float data[4];
 	char buf[16];
@@ -163,16 +110,15 @@ LCUI_BOOL css_parse_rgba(css_unit_value_t *var, const char *str)
 	if (*p) {
 		return FALSE;
 	}
-	var->unit = CSS_UNIT_COLOR;
-	var->color.a = (uchar_t)(255.0 * data[3]);
-	var->color.r = (uchar_t)data[0];
-	var->color.g = (uchar_t)data[1];
-	var->color.b = (uchar_t)data[2];
-	var->is_valid = TRUE;
+	val->type = CSS_COLOR_VALUE;
+	val->color_value.a = (uchar_t)(255.0 * data[3]);
+	val->color_value.r = (uchar_t)data[0];
+	val->color_value.g = (uchar_t)data[1];
+	val->color_value.b = (uchar_t)data[2];
 	return TRUE;
 }
 
-LCUI_BOOL css_parse_rgb(css_unit_value_t *var, const char *str)
+LCUI_BOOL css_parse_rgb(css_style_value_t *val, const char *str)
 {
 	float data[3];
 	char buf[16];
@@ -203,16 +149,15 @@ LCUI_BOOL css_parse_rgb(css_unit_value_t *var, const char *str)
 	if (*p) {
 		return FALSE;
 	}
-	var->unit = CSS_UNIT_COLOR;
-	var->color.a = 255;
-	var->color.r = (uchar_t)data[0];
-	var->color.g = (uchar_t)data[1];
-	var->color.b = (uchar_t)data[2];
-	var->is_valid = TRUE;
+	val->type = CSS_COLOR_VALUE;
+	val->color_value.a = 255;
+	val->color_value.r = (uchar_t)data[0];
+	val->color_value.g = (uchar_t)data[1];
+	val->color_value.b = (uchar_t)data[2];
 	return TRUE;
 }
 
-LCUI_BOOL css_parse_color(css_unit_value_t *var, const char *str)
+LCUI_BOOL css_parse_color(css_style_value_t *val, const char *str)
 {
 	const char *p;
 	int len = 0, status = 0, r, g, b;
@@ -249,26 +194,24 @@ LCUI_BOOL css_parse_color(css_unit_value_t *var, const char *str)
 			status = sscanf(str, "#%2X%2X%2X", &r, &g, &b);
 		}
 		break;
-	case 4: return css_parse_rgb(var, str);
-	case 8: return css_parse_rgba(var, str);
+	case 4: return css_parse_rgb(val, str);
+	case 8: return css_parse_rgba(val, str);
 	default:break;
 	}
 	if (status == 3) {
-		var->unit = CSS_UNIT_COLOR;
-		var->color.a = 255;
-		var->color.r = r;
-		var->color.g = g;
-		var->color.b = b;
-		var->is_valid = TRUE;
+		val->type = CSS_COLOR_VALUE;
+		val->color_value.a = 255;
+		val->color_value.r = r;
+		val->color_value.g = g;
+		val->color_value.b = b;
 		return TRUE;
 	}
 	if (strcmp("transparent", str) == 0) {
-		var->is_valid = TRUE;
-		var->color.alpha = 0;
-		var->color.red = 255;
-		var->color.green = 255;
-		var->color.blue = 255;
-		var->unit = CSS_UNIT_COLOR;
+		val->type = CSS_COLOR_VALUE;
+		val->color_value.a = 0;
+		val->color_value.r = 255;
+		val->color_value.g = 255;
+		val->color_value.b = 255;
 		return TRUE;
 	}
 	return FALSE;
@@ -285,7 +228,7 @@ static LCUI_BOOL css_check_absolute_path(const char *path)
 	return FALSE;
 }
 
-LCUI_BOOL css_parse_url(css_unit_value_t *s, const char *str, const char *dirname)
+LCUI_BOOL css_parse_url(css_style_value_t *s, const char *str, const char *dirname)
 {
 	size_t n, dirname_len;
 	const char *p, *head, *tail;
@@ -307,35 +250,34 @@ LCUI_BOOL css_parse_url(css_unit_value_t *s, const char *str, const char *dirnam
 		++head;
 	}
 	n = tail - head;
-	s->unit = CSS_UNIT_STRING;
 	if (dirname && !css_check_absolute_path(head)) {
 		n += (dirname_len = strlen(dirname));
-		s->val_string = malloc((n + 2) * sizeof(char));
-		if (!s->val_string) {
+		s->string_value = malloc((n + 2) * sizeof(char));
+		if (!s->string_value) {
 			return FALSE;
 		}
-		strcpy(s->val_string, dirname);
-		if (s->val_string[dirname_len - 1] != '/') {
-			s->val_string[dirname_len] = '/';
+		strcpy(s->string_value, dirname);
+		if (s->string_value[dirname_len - 1] != '/') {
+			s->string_value[dirname_len] = '/';
 			dirname_len += 1;
 			n += 1;
 		}
-		strncpy(s->val_string + dirname_len,
+		strncpy(s->string_value + dirname_len,
 			head, n - dirname_len);
-		s->val_string[n] = 0;
+		s->string_value[n] = 0;
 	} else {
-		s->val_string = malloc((n + 1) * sizeof(char));
-		if (!s->val_string) {
+		s->string_value = malloc((n + 1) * sizeof(char));
+		if (!s->string_value) {
 			return FALSE;
 		}
-		strncpy(s->val_string, head, n);
+		strncpy(s->string_value, head, n);
 	}
-	s->is_valid = TRUE;
-	s->val_string[n] = 0;
-	if (n > 0 && s->val_string[n - 1] == '"') {
+	s->string_value[n] = 0;
+	if (n > 0 && s->string_value[n - 1] == '"') {
 		n -= 1;
-		s->val_string[n] = 0;
+		s->string_value[n] = 0;
 	}
+	s->type = CSS_STRING_VALUE;
 	return TRUE;
 }
 
