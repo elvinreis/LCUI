@@ -81,47 +81,9 @@ void ui_widget_resize(ui_widget_t* w, float width, float height)
 	ui_widget_update_style(w);
 }
 
-css_unit_value_t* ui_widget_get_style(ui_widget_t* w, int key)
-{
-	css_style_property_t* node;
-
-	if (w->custom_style) {
-		node = css_style_properties_find(w->custom_style, key);
-		if (node) {
-			return &node->style;
-		}
-	} else {
-		w->custom_style = css_style_properties_create();
-	}
-	node = css_style_properties_add(w->custom_style, key);
-	return &node->style;
-}
-
-int ui_widget_unset_style(ui_widget_t* w, int key)
-{
-	if (!w->custom_style) {
-		return -1;
-	}
-	ui_widget_add_task_by_style(w, key);
-	return css_style_properties_remove(w->custom_style, key);
-}
-
-css_unit_value_t* ui_widget_get_matched_style(ui_widget_t* w, int key)
-{
-	css_selector_t* selector;
-
-	if (!w->matched_style) {
-		selector = ui_widget_create_selector(w);
-		w->matched_style = css_get_computed_style_with_cache(selector);
-		css_selector_destroy(selector);
-	}
-	assert(key >= 0 && key < w->matched_style->length);
-	return &w->matched_style->sheet[key];
-}
-
 void ui_widget_set_visibility(ui_widget_t* w, const char* value)
 {
-	css_unit_value_t* s = ui_widget_get_style(w, css_key_visibility);
+	css_style_value_t* s = ui_widget_get_style(w, css_key_visibility);
 	if (s->is_valid && s->unit == CSS_UNIT_STRING) {
 		free(s->val_string);
 		s->val_string = NULL;
@@ -132,7 +94,7 @@ void ui_widget_set_visibility(ui_widget_t* w, const char* value)
 
 void ui_widget_show(ui_widget_t* w)
 {
-	css_unit_value_t* s = ui_widget_get_style(w, css_key_display);
+	css_style_value_t* s = ui_widget_get_style(w, css_key_display);
 
 	if (s->is_valid && s->unit == CSS_UNIT_KEYWORD &&
 	    s->val_keyword == CSS_KEYWORD_NONE) {

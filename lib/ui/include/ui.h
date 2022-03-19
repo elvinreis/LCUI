@@ -773,18 +773,10 @@ LCUI_API void ui_print_tree(ui_widget_t* w);
 
 // Style
 
-#define ui_widget_check_style_type(W, K, T) \
-	css_check_style_prop((W)->style, K, T)
-
-#define ui_widget_set_style(W, K, VAL, TYPE)       \
-	do {                                       \
-		css_unit_value_t* _s;              \
-		_s = ui_widget_get_style(W, K);    \
-		_s->is_valid = TRUE;               \
-		_s->unit = CSS_UNIT_##TYPE;        \
-		_s->val_##TYPE = VAL;              \
-		ui_widget_add_task_by_style(W, K); \
-	} while (0)
+INLINE LCUI_BOOL ui_widget_check_style_type(ui_widget_t *w, int key, css_style_value_type_t type)
+{
+	return w->style->list[key].type == type;
+}
 
 INLINE LCUI_BOOL ui_widget_is_visible(ui_widget_t* w)
 {
@@ -793,13 +785,15 @@ INLINE LCUI_BOOL ui_widget_is_visible(ui_widget_t* w)
 
 INLINE LCUI_BOOL ui_widget_check_style_valid(ui_widget_t* w, int key)
 {
-	return w->style && w->style->sheet[key].is_valid;
+	return w->style && css_style_declaration_check_property(w->style, key);
 }
 
 INLINE LCUI_BOOL ui_widget_has_auto_style(ui_widget_t* w, int key)
 {
-	return !ui_widget_check_style_valid(w, key) ||
-	       ui_widget_check_style_type(w, key, AUTO);
+	return !w->style ||
+	       !css_style_declaration_check_property(w->style, key) ||
+	       w->style->list[key].type == CSS_KEYWORD_VALUE &&
+		   w->style->list[key].keyword_value == CSS_KEYWORD_AUTO;
 }
 
 LCUI_API css_selector_node_t* ui_widget_create_selector_node(ui_widget_t* w);
@@ -813,6 +807,8 @@ LCUI_API void ui_widget_update_children_style(ui_widget_t* w);
 LCUI_API void ui_widget_refresh_children_style(ui_widget_t* w);
 LCUI_API void ui_widget_set_style_string(ui_widget_t* w, const char* name,
 					 const char* value);
+LCUI_API void ui_widget_set_style_unit_value(ui_widget_t *w, int key, css_numberic_value_t value, css_unit_t unit);
+LCUI_API void ui_widget_set_style_keyword_value(ui_widget_t *w, int key, css_keyword_value_t value);
 LCUI_API void ui_widget_add_task_by_style(ui_widget_t* w, int key);
 LCUI_API void ui_widget_force_update_style(ui_widget_t* w);
 LCUI_API void ui_widget_force_refresh_style(ui_widget_t* w);
@@ -1217,7 +1213,8 @@ INLINE LCUI_BOOL ui_rect_is_include(ui_rect_t* a, ui_rect_t* b)
 LCUI_API LCUI_BOOL ui_rect_overlap(const ui_rect_t* a, const ui_rect_t* b,
 				   ui_rect_t* overlapping_rect);
 
-LCUI_API void ui_rect_merge(ui_rect_t *merged_rect, const ui_rect_t *a, const ui_rect_t *b);
+LCUI_API void ui_rect_merge(ui_rect_t* merged_rect, const ui_rect_t* a,
+			    const ui_rect_t* b);
 
 LCUI_END_HEADER
 

@@ -9,16 +9,16 @@
 INLINE int ui_widget_compute_style_option(ui_widget_t* w, int key,
 					  int default_value)
 {
-	if (!w->style->sheet[key].is_valid ||
-	    w->style->sheet[key].unit != CSS_UNIT_KEYWORD) {
+	if (!w->style->list[key].is_valid ||
+	    w->style->list[key].unit != CSS_UNIT_KEYWORD) {
 		return default_value;
 	}
-	return w->style->sheet[key].val_keyword;
+	return w->style->list[key].val_keyword;
 }
 
 static float ui_widget_compute_metric_x(ui_widget_t* w, int key)
 {
-	css_unit_value_t *s = &w->style->sheet[key];
+	css_unit_value_t *s = &w->style->list[key];
 
 	if (s->unit == CSS_UNIT_SCALE) {
 		if (!w->parent) {
@@ -34,7 +34,7 @@ static float ui_widget_compute_metric_x(ui_widget_t* w, int key)
 
 static float ui_widget_compute_metric_y(ui_widget_t* w, int key)
 {
-	css_unit_value_t *s = &w->style->sheet[key];
+	css_unit_value_t *s = &w->style->list[key];
 
 	if (s->unit == CSS_UNIT_SCALE) {
 		if (!w->parent) {
@@ -90,7 +90,7 @@ void ui_widget_compute_properties(ui_widget_t* w)
 	css_unit_value_t *s;
 	ui_widget_style_t* style = &w->computed_style;
 
-	s = &w->style->sheet[css_key_focusable];
+	s = &w->style->list[css_key_focusable];
 	style->pointer_events =
 	    ui_widget_compute_style_option(w, css_key_pointer_events, CSS_KEYWORD_INHERIT);
 	if (s->is_valid && s->unit == CSS_UNIT_BOOL && s->val_bool == 0) {
@@ -321,7 +321,7 @@ void ui_widget_compute_flex_basis_style(ui_widget_t* w)
 
 void ui_widget_compute_visibility_style(ui_widget_t* w)
 {
-	css_unit_value_t *s = &w->style->sheet[css_key_visibility];
+	css_unit_value_t *s = &w->style->list[css_key_visibility];
 
 	if (w->computed_style.display == CSS_KEYWORD_NONE) {
 		w->computed_style.visible = FALSE;
@@ -335,7 +335,7 @@ void ui_widget_compute_visibility_style(ui_widget_t* w)
 
 void ui_widget_compute_display_style(ui_widget_t* w)
 {
-	css_unit_value_t *s = &w->style->sheet[css_key_display];
+	css_unit_value_t *s = &w->style->list[css_key_display];
 	ui_widget_style_t* style = &w->computed_style;
 
 	if (s->is_valid && s->unit == CSS_UNIT_KEYWORD) {
@@ -352,7 +352,7 @@ void ui_widget_compute_display_style(ui_widget_t* w)
 void ui_widget_compute_opacity_style(ui_widget_t* w)
 {
 	float opacity = 1.0;
-	css_unit_value_t *s = &w->style->sheet[css_key_opacity];
+	css_unit_value_t *s = &w->style->list[css_key_opacity];
 
 	if (s->is_valid) {
 		switch (s->unit) {
@@ -377,7 +377,7 @@ void ui_widget_compute_opacity_style(ui_widget_t* w)
 
 void ui_widget_compute_zindex_style(ui_widget_t* w)
 {
-	css_unit_value_t *s = &w->style->sheet[css_key_z_index];
+	css_unit_value_t *s = &w->style->list[css_key_z_index];
 
 	if (s->is_valid && s->unit == CSS_UNIT_INT) {
 		w->computed_style.z_index = s->val_int;
@@ -404,7 +404,7 @@ void ui_widget_compute_position_style(ui_widget_t* w)
 
 void ui_widget_compute_flex_style(ui_widget_t* w)
 {
-	css_unit_value_t *s = w->style->sheet;
+	css_unit_value_t *s = w->style->list;
 	ui_flexbox_layout_style_t* flex = &w->computed_style.flex;
 
 	if (!ui_widget_has_valid_flexbox_style(w)) {
@@ -610,12 +610,50 @@ static void ui_widget_on_set_style(int key, css_unit_value_t *style, void* arg)
 	css_unit_value_t *s = ui_widget_get_style(w, key);
 
 	if (style->is_valid) {
-		css_unit_value_destroy(s);
+		css_style_value_destroy(s);
 		*s = *style;
 		ui_widget_add_task_by_style(w, key);
 	} else {
 		ui_widget_unset_style(w, key);
 	}
+}
+
+css_style_value_t* ui_widget_get_style(ui_widget_t* w, int key)
+{
+	css_style_property_t* node;
+
+	if (w->custom_style) {
+		node = css_style_properties_find(w->custom_style, key);
+		if (node) {
+			return &node->style;
+		}
+	} else {
+		w->custom_style = css_style_properties_create();
+	}
+	node = css_style_properties_add(w->custom_style, key);
+	return &node->style;
+}
+
+int ui_widget_unset_style(ui_widget_t* w, int key)
+{
+	if (!w->custom_style) {
+		return -1;
+	}
+	ui_widget_add_task_by_style(w, key);
+	return css_style_properties_remove(w->custom_style, key);
+}
+
+css_style_value_t* ui_widget_get_matched_style(ui_widget_t* w, int key)
+{
+	css_selector_t* selector;
+
+	if (!w->matched_style) {
+		selector = ui_widget_create_selector(w);
+		w->matched_style = css_get_computed_style_with_cache(selector);
+		css_selector_destroy(selector);
+	}
+	assert(key >= 0 && key < w->matched_style->length);
+	return &w->matched_style->list[key];
 }
 
 void ui_widget_set_style_string(ui_widget_t* w, const char* name,
@@ -631,6 +669,23 @@ void ui_widget_set_style_string(ui_widget_t* w, const char* name,
 	prop_parser->parse(&parser, value);
 	css_style_parser_destroy(&parser);
 	ui_widget_update_style(w);
+}
+
+void ui_widget_set_style_unit_value(ui_widget_t *w, int key, css_numberic_value_t value, css_unit_t unit)
+{
+	css_style_value_t *v = ui_widget_get_style(w, key);
+	v->unit_value.value = value;
+	v->unit_value.unit_ident = *(css_unit_ident_t*)unit;
+	v->type = CSS_UNIT_VALUE;
+	ui_widget_add_task_by_style(w, key);
+}
+
+void ui_widget_set_style_keyword_value(ui_widget_t *w, int key, css_keyword_value_t value)
+{
+	css_style_value_t *v = ui_widget_get_style(w, key);
+	v->keyword_value = value;
+	v->type = CSS_KEYWORD_VALUE;
+	ui_widget_add_task_by_style(w, key);
 }
 
 void ui_widget_add_task_by_style(ui_widget_t* w, int key)

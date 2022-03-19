@@ -169,8 +169,8 @@ INLINE LCUI_BOOL ui_widget_has_fill_available_width(ui_widget_t* w)
 
 INLINE LCUI_BOOL ui_widget_has_scale_size(ui_widget_t* w)
 {
-	return ui_widget_check_style_type(w, css_key_width, SCALE) ||
-	       ui_widget_check_style_type(w, css_key_height, SCALE);
+	return ui_widget_check_style_type(w, css_key_width, CSS_PERCENTAGE_VALUE) ||
+	       ui_widget_check_style_type(w, css_key_height, CSS_PERCENTAGE_VALUE);
 }
 
 INLINE LCUI_BOOL ui_widget_has_valid_flexbox_style(ui_widget_t* w)

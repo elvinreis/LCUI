@@ -38,27 +38,17 @@ LCUI_BEGIN_HEADER
 
 /* clang-format off */
 
-#define css_check_style_prop(S, K, T) \
-	css_style_declaration_check_property(S, K, CSS_UNIT_##T)
+#define css_check_style_prop css_style_declaration_check_property
 
-#define css_set_style_prop(S, KEY, VAL, UNIT)         \
-	do {                                          \
-		S->sheet[KEY].is_valid = TRUE;        \
-		S->sheet[KEY].UNIT = CSS_UNIT_##UNIT; \
-		S->sheet[KEY].val_##UNIT = VAL;       \
-	} while (0);
+INLINE void css_style_declaration_unset_property(css_style_decl_t *s, int key)
+{
+	s->list[key].type = CSS_NO_VALUE;
+	s->list[key].integer_value = 9;
+}
 
-#define css_unset_style_prop(S, KEY)                \
-	do {                                        \
-		S->sheet[KEY].is_valid = FALSE;     \
-		S->sheet[KEY].type = CSS_UNIT_NONE; \
-		S->sheet[KEY].val_int = 0;          \
-	} while (0);
-
-LCUI_API void css_unit_value_destroy(css_unit_value_t *s);
-
-LCUI_API void css_unit_value_merge(css_unit_value_t *dst,
-				   css_unit_value_t *src);
+INLINE LCUI_BOOL css_style_declaration_check_property(css_style_decl_t *style, int key) {
+	return style->list[key].type > CSS_INVALID_VALUE;
+}
 
 LCUI_API css_style_props_t *css_style_properties_create(void);
 
@@ -73,12 +63,6 @@ LCUI_API css_style_property_t *css_style_properties_add(css_style_props_t *list,
 LCUI_API void css_style_properties_destroy(css_style_props_t *list);
 
 LCUI_API css_style_decl_t *css_style_declaration_create(void);
-
-INLINE LCUI_BOOL css_style_declaration_check_property(
-    css_style_decl_t *style, css_property_key_t key, css_unit_t unit)
-{
-	return style->sheet[key].is_valid && style->sheet[key].unit == unit;
-}
 
 LCUI_API void css_style_declaration_clear(css_style_decl_t *ss);
 

@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
 #include "../include/css/style_value.h"
 
 // https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleValue/parse
@@ -75,7 +77,7 @@ void css_array_value_destroy(css_style_value_t *val)
 	if (!val->array_value) {
 		return;
 	}
-	for ( i = 0; val->array_value[i].type != CSS_NO_VALUE; ++i) {
+	for (i = 0; val->array_value[i].type != CSS_NO_VALUE; ++i) {
 		css_style_value_destroy(&val->array_value[i]);
 	}
 	free(val->array_value);
@@ -83,7 +85,74 @@ void css_array_value_destroy(css_style_value_t *val)
 
 void css_style_value_destroy(css_style_value_t *val)
 {
-	if (val->type == CSS_ARRAY_VALUE) {
+	switch (val->type) {
+	case CSS_ARRAY_VALUE:
 		css_array_value_destroy(val);
+		break;
+	case CSS_UNPARSED_VALUE:
+		free(val->unparsed_value);
+		break;
+	case CSS_STRING_VALUE:
+		free(val->string_value);
+		val->string_value = NULL;
+		break;
+	default:
+		break;
+	}
+	val->type = CSS_NO_VALUE;
+}
+
+void css_style_value_merge(css_style_value_t *dst, css_style_value_t *src)
+{
+	switch (src->type) {
+	case CSS_IMAGE_VALUE:
+	case CSS_STRING_VALUE:
+	case CSS_UNPARSED_VALUE:
+		dst->string_value = strdup2(src->string_value);
+		break;
+	default:
+		*dst = *src;
+		break;
+	}
+	dst->type = src->type;
+}
+
+void css_style_value_to_string(css_style_value_t *s, char *outstr,
+			       size_t max_len)
+{
+	switch (s->type) {
+	case CSS_INVALID_VALUE:
+		strncpy(outstr, "<invalid value>", max_len);
+		break;
+	case CSS_COLOR_VALUE:
+		if (s->color_value.a < 255) {
+			snprintf(outstr, max_len, "rgba(%d,%d,%d,%g)",
+				 s->color_value.r, s->color_value.g,
+				 s->color_value.b, s->color_value.a / 255.0);
+		} else {
+			snprintf(outstr, max_len, "#%02x%02x%02x",
+				 s->color_value.r, s->color_value.g,
+				 s->color_value.b);
+		}
+		break;
+	case CSS_IMAGE_VALUE:
+		snprintf(outstr, max_len, "image(\"%s\")", s->image_value);
+		break;
+	case CSS_STRING_VALUE:
+		strncpy(outstr, s->string_value, max_len);
+		break;
+	case CSS_KEYWORD_VALUE:
+		strncpy(outstr, css_get_keyword_name(s->keyword_value),
+			max_len);
+		break;
+	case CSS_UNIT_VALUE:
+		snprintf(outstr, max_len, "%g%s", s->unit_value.value,
+			 s->unit_value.unit);
+		break;
+	case CSS_UNPARSED_VALUE:
+		strncpy(outstr, s->unparsed_value, max_len);
+		break;
+	default:
+		break;
 	}
 }

@@ -48,7 +48,7 @@ typedef enum LCUI_TextStyleTagType_ {
 
 typedef struct LCUI_StyleTag {
 	LCUI_TextStyleTagType id;
-	css_unit_value_t style;
+	css_style_value_t style;
 } LCUI_TextStyleTag;
 
 void TextStyle_Init(LCUI_TextStyle data)
@@ -239,7 +239,7 @@ LCUI_TextStyle StyleTags_GetTextStyle(list_t *tags)
 				break;
 			}
 			style->has_fore_color = TRUE;
-			style->fore_color = tag->style.color;
+			style->fore_color.value = tag->style.color_value.value;
 			found_tags[tag->id] = TRUE;
 			++count;
 			break;
@@ -248,7 +248,7 @@ LCUI_TextStyle StyleTags_GetTextStyle(list_t *tags)
 				break;
 			}
 			style->has_back_color = TRUE;
-			style->back_color = tag->style.color;
+			style->back_color.value = tag->style.color_value.value;
 			found_tags[tag->id] = TRUE;
 			++count;
 			break;
@@ -273,7 +273,7 @@ LCUI_TextStyle StyleTags_GetTextStyle(list_t *tags)
 				break;
 			}
 			style->has_pixel_size = TRUE;
-			style->pixel_size = y_iround(tag->style.px);
+			style->pixel_size = tag->style.unit_value.value;
 			found_tags[tag->id] = TRUE;
 			++count;
 			break;

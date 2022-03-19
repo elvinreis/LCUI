@@ -606,10 +606,10 @@ static int window_mutation_list_add(list_t *list,
 	wcsncpy(wnd_mutation->title, widget->title ? widget->title : L"\0",
 		TITLE_MAX_SIZE);
 	wnd_mutation->visible = widget->computed_style.visible;
-	wnd_mutation->x = ui_compute_actual(widget->x, CSS_UNIT_PX);
-	wnd_mutation->y = ui_compute_actual(widget->y, CSS_UNIT_PX);
-	wnd_mutation->width = ui_compute_actual(widget->width, CSS_UNIT_PX);
-	wnd_mutation->height = ui_compute_actual(widget->height, CSS_UNIT_PX);
+	wnd_mutation->x = ui_compute_actual(widget->x, "px");
+	wnd_mutation->y = ui_compute_actual(widget->y, "px");
+	wnd_mutation->width = ui_compute_actual(widget->width, "px");
+	wnd_mutation->height = ui_compute_actual(widget->height, "px");
 	return 0;
 }
 

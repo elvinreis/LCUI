@@ -41,7 +41,7 @@ void ui_widget_compute_border_style(ui_widget_t* w)
 	b = &w->computed_style.border;
 	memset(b, 0, sizeof(ui_border_style_t));
 	for (key = css_key_border_start; key <= css_key_border_end; ++key) {
-		s = &w->style->sheet[key];
+		s = &w->style->list[key];
 		if (!s->is_valid) {
 			continue;
 		}

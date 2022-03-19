@@ -191,12 +191,12 @@ static int css_font_face_parser_parse_font_style(css_font_face_t *face,
 static int css_font_face_parser_parse_src(css_font_face_t *face,
 					  const char *str, const char *dirname)
 {
-	css_unit_value_t style;
+	css_style_value_t style;
 	if (face->src) {
 		free(face->src);
 	}
 	if (css_parse_url(&style, str, dirname)) {
-		face->src = style.val_string;
+		face->src = style.string_value;
 		return 0;
 	}
 	free(face->src);

@@ -69,25 +69,25 @@ static LCUI_BOOL parse_boolean(const char *str)
 	return FALSE;
 }
 
-static int css_parse_word_break_property(css_style_parser_t *ctx, const char *value)
+static int css_parse_word_break_property(css_style_parser_t *ctx,
+					 const char *value)
 {
 	char *str = strdup2(value);
-	css_unit_value_t *s = &ctx->style->sheet[ui_textview.css_key_word_break];
+	css_style_value_t *s = &ctx->style->list[ui_textview.css_key_word_break];
 
-	if (s->is_valid && s->string) {
-		free(s->string);
+	if (s->type != CSS_NO_VALUE) {
+		free(s->string_value);
 	}
-	s->unit = CSS_UNIT_STRING;
-	s->is_valid = TRUE;
-	s->string = str;
+	s->type = CSS_STRING_VALUE;
+	s->string_value = str;
 	return 0;
 }
 
 static LCUI_WordBreakMode compute_word_break_mode(css_style_decl_t *style)
 {
-	css_unit_value_t *s = &style->sheet[ui_textview.css_key_word_break];
-	if (s->is_valid && s->unit == CSS_UNIT_STRING && s->string) {
-		if (strcmp(s->string, "break-all") == 0) {
+	css_style_value_t *s = &style->list[ui_textview.css_key_word_break];
+	if (s->type == CSS_STRING_VALUE && s->string_value) {
+		if (strcmp(s->string_value, "break-all") == 0) {
 			return LCUI_WORD_BREAK_BREAK_ALL;
 		}
 	}
@@ -95,7 +95,7 @@ static LCUI_WordBreakMode compute_word_break_mode(css_style_decl_t *style)
 }
 
 static void ui_textview_on_parse_attr(ui_widget_t *w, const char *name,
-				 const char *value)
+				      const char *value)
 {
 	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);
 
@@ -124,7 +124,8 @@ static void ui_textview_on_update(ui_widget_t *w)
 	float scale = ui_get_scale();
 
 	ui_rect_t rect;
-	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);;
+	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);
+	;
 
 	list_t rects;
 	list_node_t *node;
@@ -144,7 +145,8 @@ static void ui_textview_on_update_style(ui_widget_t *w)
 {
 	ui_font_style_t style;
 	LCUI_TextStyleRec text_style;
-	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);;
+	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);
+	;
 
 	ui_font_style_init(&style);
 	ui_font_style_compute(&style, w->style);
@@ -185,7 +187,8 @@ static void ui_textview_on_init(ui_widget_t *w)
 {
 	ui_textview_t *txt;
 
-	txt = ui_widget_add_data(w, ui_textview.prototype, sizeof(ui_textview_t));
+	txt =
+	    ui_widget_add_data(w, ui_textview.prototype, sizeof(ui_textview_t));
 	txt->widget = w;
 	txt->available_width = 0;
 	txt->task.update_content = FALSE;
@@ -204,7 +207,8 @@ static void ui_textview_on_init(ui_widget_t *w)
 
 static void ui_textview_on_destroy(ui_widget_t *w)
 {
-	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);;
+	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);
+	;
 
 	list_unlink(&ui_textview.list, &txt->node);
 	ui_font_style_destroy(&txt->style);
@@ -216,13 +220,14 @@ static void ui_textview_on_destroy(ui_widget_t *w)
 	}
 }
 
-static void ui_textview_on_auto_size(ui_widget_t *w, float *width, float *height,
-				ui_layout_rule_t rule)
+static void ui_textview_on_auto_size(ui_widget_t *w, float *width,
+				     float *height, ui_layout_rule_t rule)
 {
 	int max_width, max_height;
 	float scale = ui_get_scale();
 
-	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);;
+	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);
+	;
 
 	list_t rects;
 
@@ -268,7 +273,8 @@ static void ui_textview_on_resize(ui_widget_t *w, float width, float height)
 	int fixed_height = (int)(height * scale);
 
 	ui_rect_t rect;
-	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);;
+	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);
+	;
 
 	list_t rects;
 	list_node_t *node;
@@ -286,12 +292,13 @@ static void ui_textview_on_resize(ui_widget_t *w, float width, float height)
 }
 
 static void ui_textview_on_paint(ui_widget_t *w, pd_context_t *paint,
-			     ui_widget_actual_style_t *style)
+				 ui_widget_actual_style_t *style)
 {
 	pd_pos_t pos;
 	pd_canvas_t canvas;
 	pd_rect_t content_rect, rect;
-	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);;
+	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);
+	;
 
 	content_rect.width = style->content_box.width;
 	content_rect.height = style->content_box.height;
@@ -313,7 +320,8 @@ static void ui_textview_on_paint(ui_widget_t *w, pd_context_t *paint,
 
 int ui_textview_set_text_w(ui_widget_t *w, const wchar_t *text)
 {
-	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);;
+	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);
+	;
 	wchar_t *newtext = wcsdup2(text);
 
 	if (!newtext) {
@@ -366,7 +374,8 @@ int ui_textview_set_text(ui_widget_t *w, const char *utf8_text)
 
 void ui_textview_set_multiline(ui_widget_t *w, LCUI_BOOL enable)
 {
-	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);;
+	ui_textview_t *txt = ui_widget_get_data(w, ui_textview.prototype);
+	;
 
 	TextLayer_SetMultiline(txt->layer, enable);
 	ui_widget_add_task(w, UI_TASK_USER);
@@ -389,7 +398,8 @@ static void ui_textview_on_run_rask(ui_widget_t *w, int task)
 {
 	ui_textview_t *txt;
 
-	txt = ui_widget_get_data(w, ui_textview.prototype);;
+	txt = ui_widget_get_data(w, ui_textview.prototype);
+	;
 	if (txt->task.update_content) {
 		TextLayer_SetTextW(txt->layer, txt->task.content, NULL);
 		ui_textview_on_update(w);
@@ -409,7 +419,8 @@ static void ui_textview_on_run_rask(ui_widget_t *w, int task)
 
 void ui_register_textview(void)
 {
-	ui_textview.css_key_word_break = css_register_property_name("word-break");
+	ui_textview.css_key_word_break =
+	    css_register_property_name("word-break");
 	ui_textview.prototype = ui_create_widget_prototype("textview", NULL);
 	ui_textview.prototype->init = ui_textview_on_init;
 	ui_textview.prototype->paint = ui_textview_on_paint;
@@ -422,7 +433,8 @@ void ui_register_textview(void)
 	ui_textview.prototype->runtask = ui_textview_on_run_rask;
 	list_create(&ui_textview.list);
 	ui_on_event("font_face_load", textview_on_font_face_load, NULL, NULL);
-	css_register_property_parser(ui_textview.css_key_word_break, "word-break",
+	css_register_property_parser(ui_textview.css_key_word_break,
+				     "word-break",
 				     css_parse_word_break_property);
 }
 

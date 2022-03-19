@@ -5,58 +5,60 @@
 #include "../include/ui.h"
 #include "internal.h"
 
-#define compute_actual(X) ui_compute_actual(X, CSS_UNIT_PX)
+#define compute_actual(X) ui_compute_actual(X, "px")
 
-static float compute_metric_x(ui_widget_t* w, css_unit_value_t* s)
+static float compute_metric_x(ui_widget_t* w, css_style_value_t* s)
 {
-	if (s->unit == CSS_UNIT_SCALE) {
-		return w->width * s->scale;
+	if (s->type == CSS_PERCENTAGE_VALUE) {
+		return w->width * s->numberic_value;
 	}
-	return ui_compute(s->value, s->unit);
+	return ui_compute(s->unit_value.value, s->unit_value.unit);
 }
 
-static float compute_metric_y(ui_widget_t* w, css_unit_value_t* s)
+static float compute_metric_y(ui_widget_t* w, css_style_value_t* s)
 {
-	if (s->unit == CSS_UNIT_SCALE) {
-		return w->height * s->scale;
+	if (s->type == CSS_PERCENTAGE_VALUE) {
+		return w->height * s->numberic_value;
 	}
-	return ui_compute(s->value, s->unit);
+	return ui_compute(s->unit_value.value, s->unit_value.unit);
 }
 
 void ui_widget_compute_box_shadow_style(ui_widget_t* w)
 {
 	int key;
-	css_unit_value_t* s;
+	css_style_value_t* s;
 	ui_boxshadow_style_t* sd;
 
 	sd = &w->computed_style.shadow;
 	memset(sd, 0, sizeof(ui_boxshadow_style_t));
-	for (key = css_key_box_shadow_start; key <= css_key_box_shadow_end;
-	     ++key) {
-		s = &w->style->sheet[key];
-		if (!s->is_valid) {
-			continue;
-		}
-		switch (key) {
-		case css_key_box_shadow_x:
-			sd->x = compute_metric_x(w, s);
-			break;
-		case css_key_box_shadow_y:
-			sd->y = compute_metric_y(w, s);
-			break;
-		case css_key_box_shadow_spread:
-			sd->spread = ui_compute(s->value, s->unit);
-			break;
-		case css_key_box_shadow_blur:
-			sd->blur = ui_compute(s->value, s->unit);
-			break;
-		case css_key_box_shadow_color:
-			sd->color = s->color;
-			break;
-		default:
-			break;
-		}
-	}
+	// TODO:
+
+	// for (key = css_key_box_shadow_start; key <= css_key_box_shadow_end;
+	//      ++key) {
+	// 	s = &w->style->list[key];
+	// 	if (!s->is_valid) {
+	// 		continue;
+	// 	}
+	// 	switch (key) {
+	// 	case css_key_box_shadow_x:
+	// 		sd->x = compute_metric_x(w, s);
+	// 		break;
+	// 	case css_key_box_shadow_y:
+	// 		sd->y = compute_metric_y(w, s);
+	// 		break;
+	// 	case css_key_box_shadow_spread:
+	// 		sd->spread = ui_compute(s->value, s->unit);
+	// 		break;
+	// 	case css_key_box_shadow_blur:
+	// 		sd->blur = ui_compute(s->value, s->unit);
+	// 		break;
+	// 	case css_key_box_shadow_color:
+	// 		sd->color = s->color;
+	// 		break;
+	// 	default:
+	// 		break;
+	// 	}
+	// }
 }
 
 void ui_widget_compute_box_shadow(ui_widget_t* w, pd_boxshadow_t* out)

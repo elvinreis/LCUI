@@ -4,9 +4,9 @@
 
 static ui_metrics_t ui_metrics;
 
-float ui_compute(float value, css_unit_t type)
+float ui_compute(float value, const css_unit_t unit)
 {
-	switch (type) {
+	switch (*(const css_unit_ident_t *)unit) {
 	case CSS_UNIT_PX:
 		break;
 	case CSS_UNIT_DIP:

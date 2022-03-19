@@ -206,9 +206,9 @@ typedef enum css_style_value_type_t {
 	CSS_PERCENTAGE_VALUE,
 } css_style_value_type_t;
 
-typedef char* css_image_value_t;
-typedef char* css_unparsed_value_t;
-typedef char* css_string_value_t;
+typedef char *css_image_value_t;
+typedef char *css_unparsed_value_t;
+typedef char *css_string_value_t;
 typedef int32_t css_integer_value_t;
 typedef double css_numberic_value_t;
 
@@ -223,15 +223,25 @@ typedef union css_color_value_t {
 } css_color_value_t;
 
 typedef void *css_private_value_t;
+typedef char css_unit_t[4];
+typedef int32_t css_unit_ident_t;
+
+#define CSS_UNIT_PX ((css_unit_ident_t)'px\0\0')
+#define CSS_UNIT_DIP ((css_unit_ident_t)'dip\0')
+#define CSS_UNIT_SP ((css_unit_ident_t)'sp\0\0')
+#define CSS_UNIT_PT ((css_unit_ident_t)'pt\0\0')
 
 /** https://developer.mozilla.org/en-US/docs/Web/API/CSSUnitValue */
 typedef struct css_unit_value_t {
 	css_numberic_value_t value;
-	char unit[4];
+	union {
+		css_unit_t unit;
+		css_unit_ident_t unit_ident;
+	};
 } css_unit_value_t;
 
 typedef struct css_style_value_t css_style_value_t;
-typedef css_style_value_t * css_style_array_value_t;
+typedef css_style_value_t *css_style_array_value_t;
 
 /** https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleValue */
 struct css_style_value_t {
@@ -239,6 +249,7 @@ struct css_style_value_t {
 	union {
 		css_private_value_t value;
 		css_numberic_value_t numberic_value;
+		css_numberic_value_t percentage_value;
 		css_integer_value_t integer_value;
 		css_string_value_t string_value;
 		css_unit_value_t unit_value;
@@ -251,7 +262,7 @@ struct css_style_value_t {
 };
 
 struct css_style_declaration_t {
-	css_style_value_t *sheet;
+	css_style_value_t *list;
 	size_t length;
 };
 
@@ -313,21 +324,17 @@ typedef struct css_font_face_t {
 	char *src;
 } css_font_face_t;
 
-typedef struct css_syntax_t {
-	css_style_value_type_t types[8];
-	unsigned length;
-} css_syntax_t;
-
 typedef struct css_property_definition_t {
 	int key;
-	const char *name;
-	css_syntax_t syntax;
+	char *name;
+	// TODO
 	css_style_value_t initial_value;
 } css_property_definition_t;
 
 typedef struct css_valdef_t css_valdef_t;
 
-typedef int (*css_value_parse_func_t)(css_style_value_t *, const char *, size_t);
+typedef int (*css_value_parse_func_t)(css_style_value_t *, const char *,
+				      size_t);
 
 typedef struct css_value_type_record_t css_value_type_record_t;
 

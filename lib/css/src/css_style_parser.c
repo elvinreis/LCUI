@@ -55,12 +55,12 @@ void css_style_parser_destroy(css_style_parser_t *parser)
 }
 
 void css_style_parser_set_property(css_style_parser_t *parser, int key,
-				   css_unit_value_t *s)
+				   css_style_value_t *s)
 {
 	if (parser->style_handler) {
 		parser->style_handler(key, s, parser->style_handler_arg);
 	} else {
-		parser->style->sheet[key] = *s;
+		parser->style->list[key] = *s;
 	}
 }
 

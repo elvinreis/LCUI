@@ -150,7 +150,8 @@ static void ui_textedit_update_caret(ui_widget_t* widget)
 	y = caret_y + offset_y;
 	width = edit->layer->width / scale;
 	height = TextLayer_GetRowHeight(edit->layer, row) / scale;
-	ui_widget_set_style(edit->caret, css_key_height, height, px);
+	ui_widget_set_style_unit_value(edit->caret, css_key_height, height,
+				       "px");
 	/* Keep the caret in the visible area */
 	if (x < 0) {
 		x = 0;
@@ -490,11 +491,11 @@ void ui_textedit_enable_style_tag(ui_widget_t* widget, LCUI_BOOL enable)
 void ui_textedit_enable_multiline(ui_widget_t* w, LCUI_BOOL enable)
 {
 	if (enable) {
-		ui_widget_set_style(w, css_key_white_space, CSS_KEYWORD_AUTO,
-				    keyword);
+		ui_widget_set_style_keyword_value(w, css_key_white_space,
+						  CSS_KEYWORD_AUTO);
 	} else {
-		ui_widget_set_style(w, css_key_white_space, CSS_KEYWORD_NOWRAP,
-				    keyword);
+		ui_widget_set_style_keyword_value(w, css_key_white_space,
+						  CSS_KEYWORD_NOWRAP);
 	}
 }
 

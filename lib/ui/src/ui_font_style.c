@@ -68,28 +68,30 @@ static size_t unescape(const wchar_t *instr, wchar_t *outstr)
 	return pout - outstr;
 }
 
-static void ui_font_style_compute_size(ui_font_style_t *fs, css_unit_value_t *s)
+static void ui_font_style_compute_size(ui_font_style_t *fs,
+				       css_style_value_t *s)
 {
-	if (s->is_valid) {
+	if (s->type > CSS_INVALID_VALUE) {
 		fs->font_size = ui_compute_actual(
-		    y_max(UI_MIN_FONT_SIZE, s->value), s->unit);
+		    y_max(UI_MIN_FONT_SIZE, s->unit_value.value),
+		    s->unit_value.unit);
 		return;
 	}
 	fs->font_size = ui_compute_actual(UI_DEFAULT_FONT_SIZE, CSS_UNIT_PX);
 }
 
 static void ui_font_style_compute_color(ui_font_style_t *fs,
-					css_unit_value_t *s)
+					css_style_value_t *s)
 {
-	if (s->is_valid) {
-		fs->color = s->color;
+	if (s->type > CSS_INVALID_VALUE) {
+		fs->color.value = s->color_value.value;
 	} else {
 		fs->color.value = UI_DEFAULT_FONT_COLOR;
 	}
 }
 
 static void ui_font_style_compute_family(ui_font_style_t *fs,
-					 css_unit_value_t *s)
+					 css_style_value_t *s)
 {
 	if (fs->font_ids) {
 		free(fs->font_ids);
@@ -99,64 +101,60 @@ static void ui_font_style_compute_family(ui_font_style_t *fs,
 		free(fs->font_family);
 		fs->font_family = NULL;
 	}
-	if (!s->is_valid) {
+	if (!s->type > CSS_INVALID_VALUE) {
 		return;
 	}
-	fs->font_family = strdup2(s->string);
+	fs->font_family = strdup2(s->string_value);
 	fontlib_query(&fs->font_ids, fs->font_style, fs->font_weight,
-			      fs->font_family);
+		      fs->font_family);
 }
 
 static void ui_font_style_compute_style(ui_font_style_t *fs,
-					css_unit_value_t *s)
+					css_style_value_t *s)
 {
-	if (s->is_valid) {
-		fs->font_style = s->val_int;
+	if (s->type > CSS_INVALID_VALUE) {
+		fs->font_style = (int)s->numberic_value;
 	} else {
 		fs->font_style = FONT_STYLE_NORMAL;
 	}
 }
 
 static void ui_font_style_compute_weight(ui_font_style_t *fs,
-					 css_unit_value_t *s)
+					 css_style_value_t *s)
 {
-	if (s->is_valid) {
-		fs->font_weight = s->val_int;
+	if (s->type > CSS_INVALID_VALUE) {
+		fs->font_weight = (int)s->numberic_value;
 	} else {
 		fs->font_weight = FONT_WEIGHT_NORMAL;
 	}
 }
 
 static void ui_font_style_compute_text_align(ui_font_style_t *fs,
-					     css_unit_value_t *s)
+					     css_style_value_t *s)
 {
-	if (s->is_valid) {
-		fs->text_align = s->val_keyword;
+	if (s->type > CSS_INVALID_VALUE) {
+		fs->text_align = s->keyword_value;
 	} else {
 		fs->text_align = CSS_KEYWORD_LEFT;
 	}
 }
 
 static void ui_font_style_compute_line_height(ui_font_style_t *fs,
-					      css_unit_value_t *s)
+					      css_style_value_t *s)
 {
-	int h;
-	if (s->is_valid) {
-		if (s->unit == CSS_UNIT_INT) {
-			h = y_iround(fs->font_size * s->val_int);
-		} else if (s->unit == CSS_UNIT_SCALE) {
-			h = y_iround(fs->font_size * s->val_scale);
-		} else {
-			h = ui_compute_actual(s->value, s->unit);
-		}
+	if (s->type == CSS_PERCENTAGE_VALUE) {
+		fs->line_height = y_iround(fs->font_size * s->percentage_value);
+	} else if (s->type == CSS_UNIT_VALUE) {
+		fs->line_height =
+		    ui_compute_actual(s->unit_value.value, s->unit_value.unit);
 	} else {
-		h = y_iround(fs->font_size * UI_LINE_HEIGHT_SCALE);
+		fs->line_height =
+		    y_iround(fs->font_size * UI_LINE_HEIGHT_SCALE);
 	}
-	fs->line_height = h;
 }
 
 static void ui_font_style_compute_content(ui_font_style_t *fs,
-					  css_unit_value_t *s)
+					  css_style_value_t *s)
 {
 	size_t i;
 	size_t len;
@@ -166,13 +164,13 @@ static void ui_font_style_compute_content(ui_font_style_t *fs,
 		free(fs->content);
 		fs->content = NULL;
 	}
-	if (!s->is_valid) {
+	if (!s->type > CSS_INVALID_VALUE) {
 		return;
 	}
 
-	len = decode_utf8(NULL, s->val_string, 0);
+	len = decode_utf8(NULL, s->string_value, 0);
 	content = malloc((len + 1) * sizeof(wchar_t));
-	len = decode_utf8(content, s->val_string, len);
+	len = decode_utf8(content, s->string_value, len);
 	content[len] = 0;
 	if (content[0] == '"') {
 		for (i = 0; content[i + 1]; ++i) {
@@ -189,10 +187,10 @@ static void ui_font_style_compute_content(ui_font_style_t *fs,
 }
 
 static void ui_font_style_compute_white_space(ui_font_style_t *fs,
-					      css_unit_value_t *s)
+					      css_style_value_t *s)
 {
-	if (s->is_valid && s->unit == CSS_UNIT_KEYWORD) {
-		fs->white_space = s->val_keyword;
+	if (s->type == CSS_KEYWORD_VALUE) {
+		fs->white_space = s->keyword_value;
 	} else {
 		fs->white_space = CSS_KEYWORD_AUTO;
 	}
@@ -265,15 +263,15 @@ LCUI_BOOL ui_font_style_is_equal(const ui_font_style_t *a,
 
 void ui_font_style_compute(ui_font_style_t *fs, css_style_decl_t *style)
 {
-	ui_font_style_compute_color(fs, style->sheet + css_key_color);
-	ui_font_style_compute_size(fs, style->sheet + css_key_font_size);
-	ui_font_style_compute_family(fs, style->sheet + css_key_font_family);
-	ui_font_style_compute_style(fs, style->sheet + css_key_font_style);
-	ui_font_style_compute_weight(fs, style->sheet + css_key_font_weight);
+	ui_font_style_compute_color(fs, style->list + css_key_color);
+	ui_font_style_compute_size(fs, style->list + css_key_font_size);
+	ui_font_style_compute_family(fs, style->list + css_key_font_family);
+	ui_font_style_compute_style(fs, style->list + css_key_font_style);
+	ui_font_style_compute_weight(fs, style->list + css_key_font_weight);
 	ui_font_style_compute_line_height(fs,
-					  style->sheet + css_key_line_height);
-	ui_font_style_compute_text_align(fs, style->sheet + css_key_text_align);
+					  style->list + css_key_line_height);
+	ui_font_style_compute_text_align(fs, style->list + css_key_text_align);
 	ui_font_style_compute_white_space(fs,
-					  style->sheet + css_key_white_space);
-	ui_font_style_compute_content(fs, style->sheet + css_key_content);
+					  style->list + css_key_white_space);
+	ui_font_style_compute_content(fs, style->list + css_key_content);
 }

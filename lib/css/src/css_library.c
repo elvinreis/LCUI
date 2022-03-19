@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../include/css/style_value.h"
 #include "../include/css/library.h"
 
 #define MAX_NAME_LEN 256
@@ -174,12 +175,13 @@ static int css_register_property_with_key(int key, const char *name, const char 
 	if (prop) {
 		return -1;
 	}
-	if (css_compile_syntax(syntax, &prop->syntax) != 0) {
-		css_property_definition_destroy(prop);
-		return -2;
-	}
-	css_parse_style_value_with_syntax(&prop->syntax, initial_value,
-					  &prop->initial_value);
+	// TODO
+	// if (css_compile_syntax(syntax, &prop->syntax) != 0) {
+	// 	css_property_definition_destroy(prop);
+	// 	return -2;
+	// }
+	// css_parse_style_value_with_syntax(&prop->syntax, initial_value,
+	// 				  &prop->initial_value);
 	prop->name = strdup2(name);
 	prop->key = key;
 	props[prop->key] = prop;
@@ -196,7 +198,7 @@ int css_register_property(const char *name, const char *syntax,
 
 const css_property_definition_t *css_get_property(const char *name)
 {
-	return dict_fetch_value(css.properties, name);
+	return dict_fetch_value(css.property_map, name);
 }
 
 const css_property_definition_t *css_get_property_by_key(int key)
@@ -386,47 +388,9 @@ css_style_props_t *css_style_properties_create(void)
 	return list;
 }
 
-void css_unit_value_destroy(css_unit_value_t *s)
-{
-	switch (s->unit) {
-	case CSS_UNIT_STRING:
-		if (s->is_valid && s->string) {
-			free(s->string);
-		}
-		s->string = NULL;
-		break;
-	case CSS_UNIT_WSTRING:
-		if (s->is_valid && s->string) {
-			free(s->wstring);
-		}
-		s->wstring = NULL;
-		break;
-	default:
-		break;
-	}
-	s->is_valid = FALSE;
-}
-
-void css_unit_value_merge(css_unit_value_t *dst, css_unit_value_t *src)
-{
-	switch (src->unit) {
-	case CSS_UNIT_STRING:
-		dst->string = strdup2(src->string);
-		break;
-	case CSS_UNIT_WSTRING:
-		dst->wstring = wcsdup2(src->wstring);
-		break;
-	default:
-		*dst = *src;
-		break;
-	}
-	dst->is_valid = TRUE;
-	dst->unit = src->unit;
-}
-
 static void css_style_property_destroy(css_style_property_t *node)
 {
-	css_unit_value_destroy(&node->style);
+	css_style_value_destroy(&node->style);
 	free(node);
 }
 
@@ -445,7 +409,7 @@ css_style_decl_t *css_style_declaration_create(void)
 		return ss;
 	}
 	ss->length = css_get_property_count();
-	ss->sheet = calloc(sizeof(css_unit_value_t), ss->length + 1);
+	ss->list = calloc(sizeof(css_style_value_t), ss->length + 1);
 	return ss;
 }
 
@@ -454,14 +418,14 @@ void css_style_declaration_clear(css_style_decl_t *ss)
 	int i;
 
 	for (i = 0; i < ss->length; ++i) {
-		css_unit_value_destroy(&ss->sheet[i]);
+		css_style_value_destroy(&ss->list[i]);
 	}
 }
 
 void css_style_declaration_destroy(css_style_decl_t *ss)
 {
 	css_style_declaration_clear(ss);
-	free(ss->sheet);
+	free(ss->list);
 	free(ss);
 }
 
@@ -488,7 +452,7 @@ int css_style_properties_remove(css_style_props_t *list, int key)
 		snode = node->data;
 		if (snode->key == key) {
 			list_unlink(list, node);
-			css_unit_value_destroy(&snode->style);
+			css_style_value_destroy(&snode->style);
 			free(snode);
 			return 0;
 		}
@@ -502,50 +466,57 @@ css_style_property_t *css_style_properties_add(css_style_props_t *list, int key)
 
 	node = malloc(sizeof(css_style_property_t));
 	node->key = key;
-	node->style.is_valid = FALSE;
-	node->style.unit = CSS_UNIT_NONE;
+	node->style.type = CSS_NO_VALUE;
 	node->node.data = node;
 	list_append_node(list, &node->node);
 	return node;
 }
 
-static unsigned css_style_properties_merge(css_style_props_t *list, const css_style_decl_t *sheet)
+static unsigned css_style_properties_merge(css_style_props_t *list, const css_style_decl_t *style)
 {
 	int i, count;
 	css_style_property_t *node;
 
-	for (count = 0, i = 0; i < sheet->length; ++i) {
-		if (!sheet->sheet[i].is_valid) {
+	for (count = 0, i = 0; i < style->length; ++i) {
+		if (!style->list[i].type > CSS_INVALID_VALUE) {
 			continue;
 		}
 		node = css_style_properties_add(list, i);
-		css_unit_value_merge(&node->style, &sheet->sheet[i]);
+		css_style_value_merge(&node->style, &style->list[i]);
 		count += 1;
 	}
 	return count;
 }
 
-int css_style_declaration_merge(css_style_decl_t *dest, const css_style_decl_t *src)
+int css_style_declaration_expand(css_style_decl_t *style, unsigned length)
 {
 	size_t i;
-	size_t size;
-	css_unit_value_t *s;
+	css_style_value_t *s;
 
-	if (src->length > dest->length) {
-		size = sizeof(css_unit_value_t) * src->length;
-		s = realloc(dest->sheet, size);
+	if (length > style->length) {
+		s = realloc(style->list, sizeof(css_style_value_t) * length);
 		if (!s) {
 			return -1;
 		}
-		for (i = dest->length; i < src->length; ++i) {
-			s[i].is_valid = FALSE;
+		for (i = style->length; i < length; ++i) {
+			s[i].type = CSS_NO_VALUE;
 		}
-		dest->sheet = s;
-		dest->length = src->length;
+		style->list = s;
+		style->length = length;
+	}
+	return 0;
+}
+
+int css_style_declaration_merge(css_style_decl_t *dest, const css_style_decl_t *src)
+{
+	size_t i;
+
+	if (css_style_declaration_expand(dest, src->length) != 0) {
+		return -1;
 	}
 	for (i = 0; i < src->length; ++i) {
-		if (src->sheet[i].is_valid && !dest->sheet[i].is_valid) {
-			css_unit_value_merge(&dest->sheet[i], &src->sheet[i]);
+		if (src->list[i].type > CSS_INVALID_VALUE && !dest->list[i].type > CSS_INVALID_VALUE) {
+			css_style_value_merge(&dest->list[i], &src->list[i]);
 		}
 	}
 	return 0;
@@ -553,7 +524,7 @@ int css_style_declaration_merge(css_style_decl_t *dest, const css_style_decl_t *
 
 int css_style_declaration_merge_properties(css_style_decl_t *ss, css_style_props_t *list)
 {
-	css_unit_value_t *s;
+	css_style_value_t *s;
 	css_style_property_t *snode;
 	list_node_t *node;
 	size_t size;
@@ -561,20 +532,11 @@ int css_style_declaration_merge_properties(css_style_decl_t *ss, css_style_props
 
 	for (list_each(node, list)) {
 		snode = node->data;
-		if (snode->key > ss->length) {
-			size = sizeof(css_unit_value_t) * (snode->key + 1);
-			s = realloc(ss->sheet, size);
-			if (!s) {
-				return -1;
-			}
-			for (i = ss->length; i <= snode->key; ++i) {
-				s[i].is_valid = FALSE;
-			}
-			ss->sheet = s;
-			ss->length = snode->key + 1;
+		if (css_style_declaration_expand(ss, snode->key + 1) != 0) {
+			return -1;
 		}
-		if (!ss->sheet[snode->key].is_valid && snode->style.is_valid) {
-			css_unit_value_merge(&ss->sheet[snode->key], &snode->style);
+		if (!ss->list[snode->key].type > CSS_INVALID_VALUE && snode->style.type > CSS_INVALID_VALUE) {
+			css_style_value_merge(&ss->list[snode->key], &snode->style);
 			++count;
 		}
 	}
@@ -584,27 +546,18 @@ int css_style_declaration_merge_properties(css_style_decl_t *ss, css_style_props
 int css_style_declaration_replace(css_style_decl_t *dest, const css_style_decl_t *src)
 {
 	size_t i;
-	css_unit_value_t *s;
+	css_style_value_t *s;
 	size_t count, size;
 
-	if (src->length > dest->length) {
-		size = sizeof(css_unit_value_t) * src->length;
-		s = realloc(dest->sheet, size);
-		if (!s) {
-			return -1;
-		}
-		for (i = dest->length; i < src->length; ++i) {
-			s[i].is_valid = FALSE;
-		}
-		dest->sheet = s;
-		dest->length = src->length;
+	if (css_style_declaration_expand(dest, src->length) != 0) {
+		return -1;
 	}
 	for (count = 0, i = 0; i < src->length; ++i) {
-		if (!src->sheet[i].is_valid) {
+		if (!src->list[i].type > CSS_INVALID_VALUE) {
 			continue;
 		}
-		css_unit_value_destroy(&dest->sheet[i]);
-		css_unit_value_merge(&dest->sheet[i], &src->sheet[i]);
+		css_style_value_destroy(&dest->list[i]);
+		css_style_value_merge(&dest->list[i], &src->list[i]);
 		++count;
 	}
 	return (int)count;
@@ -1359,48 +1312,19 @@ static void css_print_property_name(int key)
 	logger_debug("%s: ", key > STYLE_KEY_TOTAL ? " (+)" : "");
 }
 
-static void css_style_value_print(css_style_value_t *s)
-{
-	switch (s->type) {
-	case CSS_INVALID_VALUE:
-		logger_info("<invalid value>");
-		break;
-	case CSS_COLOR_VALUE:
-		if (s->color_value.a < 255) {
-			logger_info("rgba(%d,%d,%d,%g)", s->color_value.r, s->color_value.g, s->color_value.b,
-				s->color_value.a / 255.0);
-		} else {
-			logger_info("#%02x%02x%02x", s->color_value.r, s->color_value.g, s->color_value.b);
-		}
-	case CSS_IMAGE_VALUE:
-		logger_info(s->image_value);
-		break;
-	case CSS_STRING_VALUE:
-		logger_info(s->string_value);
-		break;
-	case CSS_KEYWORD_VALUE:
-		logger_info("%s", css_get_keyword_name(s->keyword_value));
-		break;
-	case CSS_UNIT_VALUE:
-		logger_info("%g%s", s->unit_value.value, s->unit_value.unit);
-		break;
-	case CSS_UNPARSED_VALUE:
-		logger_info(s->unparsed_value);
-	default: break;
-	}
-	logger_debug(";\n");
-}
-
 void css_style_properties_print(css_style_props_t *list)
 {
 	list_node_t *node;
 	css_style_property_t *snode;
+	char str[256] = { 0 };
 
 	for (list_each(node, list)) {
 		snode = node->data;
 		if (snode->style.type != CSS_NO_VALUE) {
 			css_print_property_name(snode->key);
-			css_style_value_print(&snode->style);
+			css_style_value_to_string(&snode->style, str, 255);
+			printf("%s;\n", str);
+			str[0] = 0;
 		}
 	}
 }
@@ -1409,12 +1333,15 @@ void css_style_declartation_print(css_style_decl_t *ss)
 {
 	int key;
 	css_style_value_t *s;
+	char str[256] = { 0 };
 
 	for (key = 0; key < ss->length; ++key) {
-		s = &ss->sheet[key];
+		s = &ss->list[key];
 		if (s->type != CSS_NO_VALUE) {
 			css_print_property_name(key);
-			css_unit_value_print(s);
+			css_style_value_to_string(s, str, 255);
+			printf("%s;\n", str);
+			str[0] = 0;
 		}
 	}
 }
@@ -1447,10 +1374,10 @@ static void css_style_link_print(css_style_link_t *link, const char *selector)
 	}
 	for (list_each(node, &link->styles)) {
 		css_style_rule_t *snode = node->data;
-		logger_debug("\n[%s]", snode->space ? snode->space : "<none>");
-		logger_debug("[rank: %d]\n%s {\n", snode->rank, fullname);
+		printf("\n[%s]", snode->space ? snode->space : "<none>");
+		printf("[rank: %d]\n%s {\n", snode->rank, fullname);
 		css_style_properties_print(snode->list);
-		logger_debug("}\n");
+		printf("}\n");
 	}
 	iter = dict_get_iterator(link->parents);
 	while ((entry = dict_next(iter))) {
@@ -1469,7 +1396,7 @@ void css_print_all(void)
 	dict_entry_t *entry;
 
 	link = NULL;
-	logger_debug("style library begin\n");
+	printf("style library begin\n");
 	group = list_get(&css.groups, 0);
 	iter = dict_get_iterator(group);
 	while ((entry = dict_next(iter))) {
@@ -1485,7 +1412,7 @@ void css_print_all(void)
 		dict_destroy_iterator(iter_slg);
 	}
 	dict_destroy_iterator(iter);
-	logger_debug("style library end\n");
+	printf("style library end\n");
 }
 
 const css_style_decl_t *css_get_computed_style_with_cache(css_selector_t *s)
@@ -1527,21 +1454,21 @@ void css_print_style_rules_by_selector(css_selector_t *s)
 	list_create(&list);
 	ss = css_style_declaration_create();
 	css_query_selector(s, &list);
-	logger_debug("selector(%u) stylesheets begin\n", s->hash);
+	printf("selector(%u) stylesheets begin\n", s->hash);
 	for (list_each(node, &list)) {
 		css_style_rule_t *sn = node->data;
-		logger_debug("\n[%s]", sn->space ? sn->space : "<none>");
-		logger_debug("[rank: %d]\n%s {\n", sn->rank, sn->selector);
+		printf("\n[%s]", sn->space ? sn->space : "<none>");
+		printf("[rank: %d]\n%s {\n", sn->rank, sn->selector);
 		css_style_properties_print(sn->list);
-		logger_debug("}\n");
+		printf("}\n");
 		css_style_declaration_merge_properties(ss, sn->list);
 	}
 	list_destroy(&list, NULL);
-	logger_debug("[selector(%u) final stylesheet] {\n", s->hash);
+	printf("[selector(%u) final stylesheet] {\n", s->hash);
 	css_style_declartation_print(ss);
-	logger_debug("}\n");
+	printf("}\n");
 	css_style_declaration_destroy(ss);
-	logger_debug("selector(%u) stylesheets end\n", s->hash);
+	printf("selector(%u) stylesheets end\n", s->hash);
 }
 
 static void css_style_cache_destructor(void *privdata, void *val)

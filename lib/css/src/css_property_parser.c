@@ -19,6 +19,7 @@ static struct css_property_parser_module_t {
 #define set_property(KEY, VALUE) \
 	css_style_parser_set_property(parser, KEY, VALUE)
 
+/*
 static int split_values(const char *str, css_style_value_t *slist, int max_len,
 			int mode)
 {
@@ -94,7 +95,7 @@ clean:
 	return vi;
 }
 
-static int css_parse_unit_valueic_value(css_style_parser_t *parser, const char *str)
+static int css_parse_unit_numberic_value(css_style_parser_t *parser, const char *str)
 {
 	css_style_value_t s;
 
@@ -602,8 +603,7 @@ static int css_parse_visibility_property(css_style_parser_t *parser,
 	return -1;
 }
 
-/* See more: https://developer.mozilla.org/en-US/docs/Web/CSS/flex */
-
+// See more: https://developer.mozilla.org/en-US/docs/Web/CSS/flex
 static int css_parse_flex_property(css_style_parser_t *parser, const char *str)
 {
 	css_style_value_t s;
@@ -676,8 +676,7 @@ static int css_parse_flex_property(css_style_parser_t *parser, const char *str)
 	return -1;
 }
 
-/* See more: https://developer.mozilla.org/en-US/docs/Web/CSS/flex-flow */
-
+// See more: https://developer.mozilla.org/en-US/docs/Web/CSS/flex-flow
 static int css_parse_flex_flow_property(css_style_parser_t *parser,
 					const char *str)
 {
@@ -897,8 +896,11 @@ static int css_on_parse_style_value(css_style_parser_t *parser, const char *str)
 	set_current_property(&v);
 }
 
+*/
+
 void css_init_preset_property_parsers(void)
 {
+	/*
 	static dict_type_t dt;
 
 	dict_init_string_key_type(&dt);
@@ -916,7 +918,7 @@ void css_init_preset_property_parsers(void)
 	register_parser(css_key_right, NULL, css_parse_unit_value_value);
 	register_parser(css_key_bottom, NULL, css_parse_unit_value_value);
 	register_parser(css_key_left, NULL, css_parse_unit_value_value);
-	register_parser(css_key_z_index, NULL, css_parse_unit_valueic_value);
+	register_parser(css_key_z_index, NULL, css_parse_unit_numberic_value);
 	register_parser(css_key_opacity, NULL, css_parse_unit_value_value);
 	register_parser(css_key_position, NULL, css_parse_keyword_value);
 	register_parser(css_key_visibility, NULL,
@@ -1009,6 +1011,7 @@ void css_init_preset_property_parsers(void)
 	register_parser(-1, "background", css_parse_background_property);
 	register_parser(-1, "flex-flow", css_parse_flex_flow_property);
 	register_parser(-1, "flex", css_parse_flex_property);
+	*/
 }
 
 void css_destroy_preset_property_parsers(void)

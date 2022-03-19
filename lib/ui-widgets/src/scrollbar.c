@@ -258,7 +258,7 @@ static void ui_scrollbar_thumb_on_mousemove(ui_widget_t* thumb, ui_event_t* e,
 		layer_pos = (float)((scrollbar->target->box.outer.width -
 				     container->box.content.width) *
 				    y_max(0, y_min(x / size, 1.0)));
-		ui_widget_set_style(target, css_key_left, -layer_pos, px);
+		ui_widget_set_style_unit_value(target, css_key_left, -layer_pos, "px");
 	} else {
 		size = thumb->parent->box.content.height - thumb->height;
 		x = 0;
@@ -267,7 +267,7 @@ static void ui_scrollbar_thumb_on_mousemove(ui_widget_t* thumb, ui_event_t* e,
 		layer_pos = (float)((scrollbar->target->box.outer.height -
 				     container->box.content.height) *
 				    y_max(0, y_min(y / size, 1.0)));
-		ui_widget_set_style(target, css_key_top, -layer_pos, px);
+		ui_widget_set_style_unit_value(target, css_key_top, -layer_pos, "px");
 	}
 	if (scrollbar->pos != layer_pos) {
 		ui_event_t e;
@@ -383,7 +383,7 @@ static void ui_scrollbar_update_size(ui_widget_t* w)
 		if (size > box_size && box_size > 0) {
 			n = box_size / size;
 		}
-		ui_widget_set_style(thumb, css_key_width, n, scale);
+		ui_widget_set_style_unit_value(thumb, css_key_width, n, "%");
 	} else {
 		if (scrollbar->target) {
 			size = scrollbar->target->box.outer.height;
@@ -394,7 +394,7 @@ static void ui_scrollbar_update_size(ui_widget_t* w)
 		if (size > box_size && box_size > 0) {
 			n = box_size / size;
 		}
-		ui_widget_set_style(thumb, css_key_height, n, scale);
+		ui_widget_set_style_unit_value(thumb, css_key_height, n, "%");
 	}
 	ui_scrollbar_set_position(w, scrollbar->pos);
 	ui_widget_update_style(thumb);
@@ -644,8 +644,8 @@ float ui_scrollbar_set_position(ui_widget_t* w, float pos)
 		}
 		thumb_pos = w->box.content.width - thumb->width;
 		thumb_pos = thumb_pos * new_pos / (size - box_size);
-		ui_widget_set_style(thumb, css_key_left, thumb_pos, px);
-		ui_widget_set_style(content, css_key_left, -new_pos, px);
+		ui_widget_set_style_unit_value(thumb, css_key_left, thumb_pos, "px");
+		ui_widget_set_style_unit_value(content, css_key_left, -new_pos, "px");
 	} else {
 		size = scrollbar->target->box.outer.height;
 		if (scrollbar->container) {
@@ -665,8 +665,8 @@ float ui_scrollbar_set_position(ui_widget_t* w, float pos)
 		} else {
 			thumb_pos = thumb_pos * new_pos / (size - box_size);
 		}
-		ui_widget_set_style(thumb, css_key_top, thumb_pos, px);
-		ui_widget_set_style(content, css_key_top, -new_pos, px);
+		ui_widget_set_style_unit_value(thumb, css_key_top, thumb_pos, "px");
+		ui_widget_set_style_unit_value(content, css_key_top, -new_pos, "px");
 	}
 	pos = new_pos;
 	if (scrollbar->pos != pos) {

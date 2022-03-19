@@ -3,10 +3,15 @@
 
 #include <LCUI/types.h>
 #include <LCUI/util.h>
-#include <LCUI/pandagl/def.h>
 
 #define CSS_SELECTOR_MAX_LEN 1024
 #define CSS_SELECTOR_MAX_DEPTH 32
+
+#define CASE_WHITE_SPACE \
+	case ' ':        \
+	case '\n':       \
+	case '\r':       \
+	case '\t'
 
 typedef enum css_property_key_t {
 	// position start
@@ -33,6 +38,7 @@ typedef enum css_property_key_t {
 	css_key_max_height,
 
 	// margin start
+	css_key_margin,
 	css_key_margin_top,
 	css_key_margin_right,
 	css_key_margin_bottom,
@@ -40,6 +46,7 @@ typedef enum css_property_key_t {
 	// margin end
 
 	// padding start
+	css_key_padding,
 	css_key_padding_top,
 	css_key_padding_right,
 	css_key_padding_bottom,
@@ -49,6 +56,7 @@ typedef enum css_property_key_t {
 	css_key_vertical_align,
 
 	// border start
+	css_key_border,
 	css_key_border_top_width,
 	css_key_border_top_style,
 	css_key_border_top_color,
@@ -68,6 +76,7 @@ typedef enum css_property_key_t {
 	// border end
 
 	// background start
+	css_key_background,
 	css_key_background_color,
 	css_key_background_image,
 	css_key_background_size,
@@ -82,15 +91,10 @@ typedef enum css_property_key_t {
 	css_key_background_origin,
 	// background end
 
-	// box shadow start
-	css_key_box_shadow_x,
-	css_key_box_shadow_y,
-	css_key_box_shadow_spread,
-	css_key_box_shadow_blur,
-	css_key_box_shadow_color,
-	// box shadow end
+	css_key_box_shadow,
 
 	// flex style start
+	css_key_flex,
 	css_key_flex_basis,
 	css_key_flex_grow,
 	css_key_flex_shrink,
@@ -185,76 +189,80 @@ typedef enum css_keyword_value_t {
 	CSS_KEYWORD_COLUMN
 } css_keyword_value_t;
 
-typedef enum css_unit_t {
-	CSS_UNIT_NONE,
-	CSS_UNIT_AUTO,
-	CSS_UNIT_SCALE,
-	CSS_UNIT_PX,
-	CSS_UNIT_PT,
-	CSS_UNIT_DIP,
-	CSS_UNIT_SP,
-	CSS_UNIT_COLOR,
-	CSS_UNIT_IMAGE,
-	CSS_UNIT_KEYWORD,
-	CSS_UNIT_INT,
-	CSS_UNIT_BOOL,
-	CSS_UNIT_STRING,
-	CSS_UNIT_WSTRING
-} css_unit_t;
+typedef enum css_style_value_type_t {
+	CSS_NO_VALUE,
+	CSS_INVALID_VALUE,
+	CSS_UNPARSED_VALUE,
+	CSS_ARRAY_VALUE,
 
-#define CSS_UNIT_px CSS_UNIT_PX
-#define CSS_UNIT_pt CSS_UNIT_PT
-#define CSS_UNIT_int CSS_UNIT_INT
-#define CSS_UNIT_color CSS_UNIT_COLOR
-#define CSS_UNIT_scale CSS_UNIT_SCALE
-#define CSS_UNIT_keyword CSS_UNIT_KEYWORD
-#define CSS_UNIT_bool CSS_UNIT_BOOL
-#define CSS_UNIT_image CSS_UNIT_IMAGE
-#define CSS_UNIT_string CSS_UNIT_STRING
-#define CSS_UNIT_wstring CSS_UNIT_WSTRING
-#define CSS_UNIT_sp CSS_UNIT_SP
-#define CSS_UNIT_dp CSS_UNIT_DIP
-#define CSS_UNIT_dip CSS_UNIT_DIP
-#define CSS_UNIT_0 CSS_UNIT_NONE
-#define CSS_UNIT_none CSS_UNIT_NONE
+	CSS_NUMBERIC_VALUE,
+	CSS_STRING_VALUE,
+	CSS_KEYWORD_VALUE,
+	CSS_COLOR_VALUE,
+	CSS_IMAGE_VALUE,
 
+	CSS_UNIT_VALUE,
+	CSS_LENGTH_VALUE,
+	CSS_PERCENTAGE_VALUE,
+} css_style_value_type_t;
+
+typedef char *css_image_value_t;
+typedef char *css_unparsed_value_t;
+typedef char *css_string_value_t;
+typedef int32_t css_integer_value_t;
+typedef double css_numberic_value_t;
+
+typedef union css_color_value_t {
+	uint32_t value;
+	struct {
+		unsigned char r;
+		unsigned char g;
+		unsigned char b;
+		unsigned char a;
+	};
+} css_color_value_t;
+
+typedef void *css_private_value_t;
+typedef char css_unit_t[4];
+typedef int32_t css_unit_ident_t;
+
+#define CSS_UNIT_PX ((css_unit_ident_t)'px\0\0')
+#define CSS_UNIT_DIP ((css_unit_ident_t)'dip\0')
+#define CSS_UNIT_SP ((css_unit_ident_t)'sp\0\0')
+#define CSS_UNIT_PT ((css_unit_ident_t)'pt\0\0')
+
+/** https://developer.mozilla.org/en-US/docs/Web/API/CSSUnitValue */
 typedef struct css_unit_value_t {
-	LCUI_BOOL is_valid : 2;
-	css_unit_t unit : 6;
+	css_numberic_value_t value;
 	union {
-		int val_int;
-		int val_0;
-		int val_none;
-		float value;
-		float px;
-		float val_px;
-		float pt;
-		float val_pt;
-		float dp;
-		float val_dp;
-		float dip;
-		float val_dip;
-		float sp;
-		float val_sp;
-		css_keyword_value_t keyword;
-		css_keyword_value_t val_keyword;
-		float scale;
-		float val_scale;
-		char *string;
-		char *val_string;
-		wchar_t *wstring;
-		wchar_t *val_wstring;
-		// TODO: delete color and image
-		pd_color_t color;
-		pd_color_t val_color;
-		pd_canvas_t *image;
-		pd_canvas_t *val_image;
-		LCUI_BOOL val_bool;
+		css_unit_t unit;
+		css_unit_ident_t unit_ident;
 	};
 } css_unit_value_t;
 
+typedef struct css_style_value_t css_style_value_t;
+typedef css_style_value_t *css_style_array_value_t;
+
+/** https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleValue */
+struct css_style_value_t {
+	css_style_value_type_t type;
+	union {
+		css_private_value_t value;
+		css_numberic_value_t numberic_value;
+		css_numberic_value_t percentage_value;
+		css_integer_value_t integer_value;
+		css_string_value_t string_value;
+		css_unit_value_t unit_value;
+		css_color_value_t color_value;
+		css_image_value_t image_value;
+		css_unparsed_value_t unparsed_value;
+		css_keyword_value_t keyword_value;
+		css_style_array_value_t array_value;
+	};
+};
+
 struct css_style_declaration_t {
-	css_unit_value_t *sheet;
+	css_style_value_t *list;
 	size_t length;
 };
 
@@ -267,17 +275,17 @@ typedef unsigned css_selector_hash_t;
 
 typedef struct css_style_property_t {
 	css_property_key_t key;
-	css_unit_value_t style;
+	css_style_value_t style;
 	list_node_t node;
 } css_style_property_t;
 
 typedef struct css_selector_node_t {
-	char *id;       /**< ID */
-	char *type;     /**< 类型名称 */
-	char **classes; /**< 样式类列表 */
-	char **status;  /**< 状态列表 */
+	char *id;
+	char *type;
+	char **classes;
+	char **status;
 	char *fullname; /**< 全名，由 id、type、classes、status 组合而成 */
-	int rank;       /**< 权值 */
+	int rank;
 } css_selector_node_t;
 
 typedef struct css_selector_t {
@@ -315,5 +323,19 @@ typedef struct css_font_face_t {
 	css_font_weight_t font_weight;
 	char *src;
 } css_font_face_t;
+
+typedef struct css_property_definition_t {
+	int key;
+	char *name;
+	// TODO
+	css_style_value_t initial_value;
+} css_property_definition_t;
+
+typedef struct css_valdef_t css_valdef_t;
+
+typedef int (*css_value_parse_func_t)(css_style_value_t *, const char *,
+				      size_t);
+
+typedef struct css_value_type_record_t css_value_type_record_t;
 
 #endif
