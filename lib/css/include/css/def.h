@@ -132,8 +132,8 @@ typedef enum css_property_key_t {
 #define css_key_border_end css_key_border_bottom_right_radius
 #define css_key_background_start css_key_background_color
 #define css_key_background_end css_key_background_origin
-#define css_key_box_shadow_start css_key_box_shadow_x
-#define css_key_box_shadow_end css_key_box_shadow_color
+#define css_key_box_shadow_start css_key_box_shadow
+#define css_key_box_shadow_end css_key_box_shadow
 
 /* FIXME: remove css_keyword_value_t
  * These values do not need to put in css_keyword_value_t, because they are not
@@ -202,6 +202,7 @@ typedef enum css_style_value_type_t {
 	CSS_IMAGE_VALUE,
 
 	CSS_UNIT_VALUE,
+	CSS_BOOLEAN_VALUE,
 	CSS_LENGTH_VALUE,
 	CSS_PERCENTAGE_VALUE,
 } css_style_value_type_t;
@@ -223,6 +224,7 @@ typedef union css_color_value_t {
 } css_color_value_t;
 
 typedef void *css_private_value_t;
+typedef int css_boolean_value_t;
 typedef char css_unit_t[4];
 typedef int32_t css_unit_ident_t;
 
@@ -258,12 +260,13 @@ struct css_style_value_t {
 		css_unparsed_value_t unparsed_value;
 		css_keyword_value_t keyword_value;
 		css_style_array_value_t array_value;
+		css_boolean_value_t boolean_value;
 	};
 };
 
 struct css_style_declaration_t {
 	css_style_value_t *list;
-	size_t length;
+	unsigned length;
 };
 
 typedef struct css_style_declaration_t css_style_declaration_t;

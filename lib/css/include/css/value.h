@@ -10,10 +10,6 @@ LCUI_API void css_init_value_definitons(void);
 
 LCUI_API void css_destroy_value_definitons(void);
 
-LCUI_API void css_init_value_types(void);
-
-LCUI_API void css_destroy_value_types(void);
-
 LCUI_API const css_value_type_record_t *css_register_value_type(
     const char *type_name, css_value_parse_func_t parse);
 

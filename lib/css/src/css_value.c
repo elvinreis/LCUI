@@ -1,4 +1,4 @@
-
+﻿
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/CSS/Value_definition_syntax
  * @see https://drafts.csswg.org/css-values/#value-defs
@@ -6,6 +6,7 @@
  **/
 
 #include <stdarg.h>
+#include <stdio.h>
 #include <assert.h>
 #include "../include/css/library.h"
 #include "../include/css/style_value.h"
@@ -39,16 +40,6 @@ struct css_valdef_t {
 		css_value_type_record_t *type;
 	};
 };
-
-typedef enum css_valdef_sign_t {
-	CSS_VALDEF_SIGN_NONE,
-	CSS_VALDEF_SIGN_JUXTAPOSITION,
-	CSS_VALDEF_SIGN_DOUBLE_AMPERSAND,
-	CSS_VALDEF_SIGN_DOUBLE_BAR,
-	CSS_VALDEF_SIGN_SINGLE_BAR,
-	CSS_VALDEF_SIGN_BRACKETS,
-	CSS_VALDEF_SIGN_ANGLE_BRACKET
-} css_valdef_sign_t;
 
 typedef enum css_valdef_parser_target_t {
 	CSS_VALDEF_PARSER_TARGET_NONE,
@@ -90,6 +81,20 @@ static struct css_value_module_t {
 	/** dict_t<string, css_value_type_record_t> */
 	dict_t *types;
 } css_value;
+
+static void css_valdef_destroy(css_valdef_t *valdef)
+{
+	switch (valdef->sign) {
+	case CSS_VALDEF_SIGN_DOUBLE_BAR:
+	case CSS_VALDEF_SIGN_SINGLE_BAR:
+		list_destroy(&valdef->children,
+			     (list_item_destructor_t)(css_valdef_destroy));
+		break;
+	default:
+		break;
+	}
+	free(valdef);
+}
 
 static void css_value_alias_destroy_value(void *priv, void *val)
 {
@@ -145,41 +150,6 @@ static void css_valdef_append(css_valdef_t *valdef, css_valdef_t *child)
 	assert(valdef->sign == CSS_VALDEF_SIGN_NONE ||
 	       valdef->sign == CSS_VALDEF_SIGN_ANGLE_BRACKET);
 	list_append(&valdef->children, child);
-}
-
-static void css_valdef_destroy(css_valdef_t *valdef)
-{
-	list_node_t *node;
-
-	switch (valdef->sign) {
-	case CSS_VALDEF_SIGN_DOUBLE_BAR:
-	case CSS_VALDEF_SIGN_SINGLE_BAR:
-		list_destroy(&valdef->children,
-			     (list_item_destructor_t)(css_valdef_destroy));
-		break;
-	default:
-		break;
-	}
-	free(valdef);
-}
-
-int css_register_valdef_alias(const char *definitons, const char *alias)
-{
-	css_valdef_t *valdef;
-
-	if (css_get_keyword_key(alias)) {
-		return -1;
-	}
-	valdef = css_compile_valdef(definitons);
-	if (valdef) {
-		return dict_add(css_value.alias, valdef, alias);
-	}
-	return -3;
-}
-
-const css_valdef_t *css_resolve_valdef_alias(const char *alias)
-{
-	return dict_fetch_value(css_value.alias, alias);
 }
 
 const css_value_type_record_t *css_register_value_type(
@@ -729,4 +699,23 @@ int css_parse_value(const css_valdef_t *valdef, const char *str,
 	// TODO: 提取匹配结果
 	css_value_matcher_destroy(&matcher);
 	return ret;
+}
+
+int css_register_valdef_alias(const char *definitons, const char *alias)
+{
+	css_valdef_t *valdef;
+
+	if (css_get_keyword_key(alias)) {
+		return -1;
+	}
+	valdef = css_compile_valdef(definitons);
+	if (valdef) {
+		return dict_add(css_value.alias, valdef, alias);
+	}
+	return -3;
+}
+
+const css_valdef_t *css_resolve_valdef_alias(const char *alias)
+{
+	return dict_fetch_value(css_value.alias, alias);
 }

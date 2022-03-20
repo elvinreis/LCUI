@@ -20,102 +20,93 @@ void ui_widget_destroy_background(ui_widget_t *w)
 {
 	ui_widget_unset_style(w, css_key_background_image);
 	w->computed_style.background.image = NULL;
-	if (ui_widget_check_style_type(w, css_key_background_image, string)) {
+	if (w->style->list[css_key_background_image].type == CSS_IMAGE_VALUE) {
 		ui_image_remove_ref(
 		    (ui_image_t *)&w->computed_style.background.image);
 	}
 }
 
-static void ui_widget_on_background_image_load(ui_image_t *image,
-					       void *w)
+static void ui_widget_on_background_image_load(ui_image_t *image, void *w)
 {
 	ui_widget_mark_dirty_rect(w, NULL, CSS_KEYWORD_BORDER_BOX);
 }
 
 void ui_widget_compute_background_style(ui_widget_t *widget)
 {
-	css_unit_value_t *s;
-	css_style_decl_t *ss = widget->style;
-	ui_background_style_t *bg = &widget->computed_style.background;
-	int key = css_key_background_start;
+	// TODO:
+	// css_style_value_t *s;
+	// css_style_decl_t *ss = widget->style;
+	// ui_background_style_t *bg = &widget->computed_style.background;
+	// int key = css_key_background_start;
 
-	for (; key <= css_key_background_end; ++key) {
-		s = &ss->sheet[key];
-		switch (key) {
-		case css_key_background_color:
-			if (s->is_valid) {
-				bg->color = s->color;
-			} else {
-				bg->color.value = 0;
-			}
-			break;
-		case css_key_background_image:
-			if (!s->is_valid) {
-				bg->image = NULL;
-				break;
-			}
-			switch (s->unit) {
-			case CSS_UNIT_STRING:
-				bg->image = (pd_canvas_t*)ui_load_image(s->string);
-				ui_image_on_event(
-				    (ui_image_t *)bg->image,
-				    ui_widget_on_background_image_load, widget);
-				ui_image_add_ref((ui_image_t *)bg->image);
-				break;
-			case CSS_UNIT_IMAGE:
-				if (s->image) {
-					bg->image = s->image;
-				}
-			default:
-				break;
-			}
-			break;
-		case css_key_background_position:
-			if (s->is_valid && s->unit != CSS_UNIT_NONE) {
-				bg->position.using_value = TRUE;
-				bg->position.value = s->val_keyword;
-			} else {
-				bg->position.using_value = FALSE;
-				bg->position.value = 0;
-			}
-			break;
-		case css_key_background_position_x:
-			if (s->is_valid && s->unit != CSS_UNIT_NONE) {
-				bg->position.using_value = FALSE;
-				bg->position.x = *s;
-			}
-			break;
-		case css_key_background_position_y:
-			if (s->is_valid && s->unit != CSS_UNIT_NONE) {
-				bg->position.using_value = FALSE;
-				bg->position.y = *s;
-			}
-			break;
-		case css_key_background_size:
-			if (s->is_valid && s->unit != CSS_UNIT_NONE) {
-				bg->size.using_value = TRUE;
-				bg->size.value = s->val_keyword;
-			} else {
-				bg->size.using_value = FALSE;
-				bg->size.value = 0;
-			}
-			break;
-		case css_key_background_size_width:
-			if (s->is_valid && s->unit != CSS_UNIT_NONE) {
-				bg->size.using_value = FALSE;
-				bg->size.width = *s;
-			}
-			break;
-		case css_key_background_size_height:
-			if (s->is_valid && s->unit != CSS_UNIT_NONE) {
-				bg->size.using_value = FALSE;
-				bg->size.height = *s;
-			}
-			break;
-		default:
-			break;
-		}
-	}
+	// for (; key <= css_key_background_end; ++key) {
+	// 	s = &ss->sheet[key];
+	// 	switch (key) {
+	// 	case css_key_background_color:
+	// 		if (s->type == CSS_COLOR_VALUE) {
+	// 			bg->color.value = s->color_value.value;
+	// 		} else {
+	// 			bg->color.value = 0;
+	// 		}
+	// 		break;
+	// 	case css_key_background_image:
+	// 		if (s->type != CSS_IMAGE_VALUE) {
+	// 			bg->image = NULL;
+	// 			break;
+	// 		}
+	// 		bg->image =
+	// 		    (pd_canvas_t *)ui_load_image(s->image_value);
+	// 		ui_image_on_event((ui_image_t *)bg->image,
+	// 				  ui_widget_on_background_image_load,
+	// 				  widget);
+	// 		ui_image_add_ref((ui_image_t *)bg->image);
+	// 		break;
+	// 	case css_key_background_position:
+	// 		if (s->type == CSS_KEYWORD_VALUE) {
+	// 			bg->position.using_value = TRUE;
+	// 			bg->position.value = s->keyword_value;
+	// 		} else {
+	// 			bg->position.using_value = FALSE;
+	// 			bg->position.value = 0;
+	// 		}
+	// 		break;
+	// 	case css_key_background_position_x:
+	// 		if (s->type == CSS__VALUE) {
+	// 			bg->position.using_value = FALSE;
+	// 			bg->position.x = *s;
+	// 		}
+	// 		break;
+	// 	case css_key_background_position_y:
+	// 		if (s->is_valid && s->unit != CSS_UNIT_NONE) {
+	// 			bg->position.using_value = FALSE;
+	// 			bg->position.y = *s;
+	// 		}
+	// 		break;
+	// 	case css_key_background_size:
+	// 		if (s->is_valid && s->unit != CSS_UNIT_NONE) {
+	// 			bg->size.using_value = TRUE;
+	// 			bg->size.value = s->val_keyword;
+	// 		} else {
+	// 			bg->size.using_value = FALSE;
+	// 			bg->size.value = 0;
+	// 		}
+	// 		break;
+	// 	case css_key_background_size_width:
+	// 		if (s->is_valid && s->unit != CSS_UNIT_NONE) {
+	// 			bg->size.using_value = FALSE;
+	// 			bg->size.width = *s;
+	// 		}
+	// 		break;
+	// 	case css_key_background_size_height:
+	// 		if (s->is_valid && s->unit != CSS_UNIT_NONE) {
+	// 			bg->size.using_value = FALSE;
+	// 			bg->size.height = *s;
+	// 		}
+	// 		break;
+	// 	default:
+	// 		break;
+	// 	}
+	// }
 }
 
 void ui_widget_compute_background(ui_widget_t *w, pd_background_t *out)
@@ -172,35 +163,36 @@ void ui_widget_compute_background(ui_widget_t *w, pd_background_t *out)
 		out->size.width = ui_compute_actual(width, CSS_UNIT_PX);
 		out->size.height = ui_compute_actual(height, CSS_UNIT_PX);
 	} else {
-		type = CSS_UNIT_PX;
-		switch (bg->size.width.unit) {
-		case CSS_UNIT_SCALE:
-			width = box->width * bg->size.width.scale;
-			break;
-		case CSS_UNIT_NONE:
-		case CSS_UNIT_AUTO:
-			width = (float)bg->image->width;
-			break;
-		default:
-			width = bg->size.width.value;
-			type = bg->size.width.unit;
-			break;
-		}
-		out->size.width = ui_compute_actual(width, type);
-		type = CSS_UNIT_PX;
-		switch (bg->size.height.unit) {
-		case CSS_UNIT_SCALE:
-			height = box->height * bg->size.height.scale;
-			break;
-		case CSS_UNIT_NONE:
-		case CSS_UNIT_AUTO:
-			height = (float)bg->image->height;
-			break;
-		default:
-			height = (float)bg->size.height.value;
-			break;
-		}
-		out->size.height = ui_compute_actual(height, type);
+		// TODO
+		// type = CSS_UNIT_PX;
+		// switch (bg->size.width.unit) {
+		// case CSS_UNIT_SCALE:
+		// 	width = box->width * bg->size.width.scale;
+		// 	break;
+		// case CSS_UNIT_NONE:
+		// case CSS_UNIT_AUTO:
+		// 	width = (float)bg->image->width;
+		// 	break;
+		// default:
+		// 	width = bg->size.width.value;
+		// 	type = bg->size.width.unit;
+		// 	break;
+		// }
+		// out->size.width = ui_compute_actual(width, type);
+		// type = CSS_UNIT_PX;
+		// switch (bg->size.height.unit) {
+		// case CSS_UNIT_SCALE:
+		// 	height = box->height * bg->size.height.scale;
+		// 	break;
+		// case CSS_UNIT_NONE:
+		// case CSS_UNIT_AUTO:
+		// 	height = (float)bg->image->height;
+		// 	break;
+		// default:
+		// 	height = (float)bg->size.height.value;
+		// 	break;
+		// }
+		// out->size.height = ui_compute_actual(height, type);
 	}
 	/* 计算背景图的像素坐标 */
 	if (bg->position.using_value) {
@@ -246,41 +238,41 @@ void ui_widget_compute_background(ui_widget_t *w, pd_background_t *out)
 		out->position.x = ui_compute_actual(x, CSS_UNIT_PX);
 		out->position.y = ui_compute_actual(y, CSS_UNIT_PX);
 	} else {
-		type = CSS_UNIT_PX;
-		switch (bg->position.x.unit) {
-		case CSS_UNIT_SCALE:
-			x = box->width - width;
-			x = x * bg->position.x.scale;
-			break;
-		case CSS_UNIT_NONE:
-		case CSS_UNIT_AUTO:
-			break;
-		default:
-			x = bg->position.x.value;
-			type = bg->position.x.unit;
-			break;
-		}
-		out->position.x = ui_compute_actual(x, type);
-		type = CSS_UNIT_PX;
-		switch (bg->position.y.unit) {
-		case CSS_UNIT_SCALE:
-			y = box->height - height;
-			y = y * bg->position.y.scale;
-			break;
-		case CSS_UNIT_NONE:
-		case CSS_UNIT_AUTO:
-			break;
-		default:
-			y = bg->position.y.value;
-			type = bg->position.y.unit;
-			break;
-		}
-		out->position.y = ui_compute_actual(y, type);
+		// type = CSS_UNIT_PX;
+		// switch (bg->position.x.unit) {
+		// case CSS_UNIT_SCALE:
+		// 	x = box->width - width;
+		// 	x = x * bg->position.x.scale;
+		// 	break;
+		// case CSS_UNIT_NONE:
+		// case CSS_UNIT_AUTO:
+		// 	break;
+		// default:
+		// 	x = bg->position.x.value;
+		// 	type = bg->position.x.unit;
+		// 	break;
+		// }
+		// out->position.x = ui_compute_actual(x, type);
+		// type = CSS_UNIT_PX;
+		// switch (bg->position.y.unit) {
+		// case CSS_UNIT_SCALE:
+		// 	y = box->height - height;
+		// 	y = y * bg->position.y.scale;
+		// 	break;
+		// case CSS_UNIT_NONE:
+		// case CSS_UNIT_AUTO:
+		// 	break;
+		// default:
+		// 	y = bg->position.y.value;
+		// 	type = bg->position.y.unit;
+		// 	break;
+		// }
+		// out->position.y = ui_compute_actual(y, type);
 	}
 }
 
 void ui_widget_paint_background(ui_widget_t *w, pd_context_t *ctx,
-				ui_widget_actual_style_t* style)
+				ui_widget_actual_style_t *style)
 {
 	pd_rect_t box;
 

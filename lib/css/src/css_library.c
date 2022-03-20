@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "../include/css/style_value.h"
+#include "../include/css/value.h"
 #include "../include/css/library.h"
 
 #define MAX_NAME_LEN 256
@@ -415,7 +416,7 @@ css_style_decl_t *css_style_declaration_create(void)
 
 void css_style_declaration_clear(css_style_decl_t *ss)
 {
-	int i;
+	unsigned i;
 
 	for (i = 0; i < ss->length; ++i) {
 		css_style_value_destroy(&ss->list[i]);
@@ -474,7 +475,7 @@ css_style_property_t *css_style_properties_add(css_style_props_t *list, int key)
 
 static unsigned css_style_properties_merge(css_style_props_t *list, const css_style_decl_t *style)
 {
-	int i, count;
+	size_t i, count;
 	css_style_property_t *node;
 
 	for (count = 0, i = 0; i < style->length; ++i) {
@@ -524,11 +525,10 @@ int css_style_declaration_merge(css_style_decl_t *dest, const css_style_decl_t *
 
 int css_style_declaration_merge_properties(css_style_decl_t *ss, css_style_props_t *list)
 {
-	css_style_value_t *s;
 	css_style_property_t *snode;
 	list_node_t *node;
 	size_t size;
-	size_t i = 0, count = 0;
+	size_t count = 0;
 
 	for (list_each(node, list)) {
 		snode = node->data;
@@ -546,8 +546,7 @@ int css_style_declaration_merge_properties(css_style_decl_t *ss, css_style_props
 int css_style_declaration_replace(css_style_decl_t *dest, const css_style_decl_t *src)
 {
 	size_t i;
-	css_style_value_t *s;
-	size_t count, size;
+	size_t count;
 
 	if (css_style_declaration_expand(dest, src->length) != 0) {
 		return -1;
@@ -1331,7 +1330,7 @@ void css_style_properties_print(css_style_props_t *list)
 
 void css_style_declartation_print(css_style_decl_t *ss)
 {
-	int key;
+	unsigned key;
 	css_style_value_t *s;
 	char str[256] = { 0 };
 
@@ -1540,7 +1539,7 @@ static void css_init_properties(void)
 
 	css_register_valdef_alias("shadow", "<length>{2,4} && <color>?");
 	css_register_valdef_alias("content-position", "center | start | end | flex-start | flex-end");
-	css_register_valdef_alias("content-distribution", "space-between | space-around | space-evenly | stretch"):
+	css_register_valdef_alias("content-distribution", "space-between | space-around | space-evenly | stretch");
 
 	/** @see https://developer.mozilla.org/en-US/docs/Web/CSS/visibility */
 	css_register_property_with_key(css_key_visibility, "visibility", "visible | hidden", "visible");

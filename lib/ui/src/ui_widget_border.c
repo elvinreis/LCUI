@@ -7,17 +7,17 @@
 
 static float compute_metric_x(ui_widget_t* w, css_unit_value_t* s)
 {
-	if (s->unit == CSS_UNIT_SCALE) {
-		return w->width * s->scale;
-	}
+	// if (s->unit == CSS_UNIT_SCALE) {
+	// 	return w->width * s->scale;
+	// }
 	return ui_compute(s->value, s->unit);
 }
 
 static float compute_metric_y(ui_widget_t* w, css_unit_value_t* s)
 {
-	if (s->unit == CSS_UNIT_SCALE) {
-		return w->height * s->scale;
-	}
+	// if (s->unit == CSS_UNIT_SCALE) {
+	// 	return w->height * s->scale;
+	// }
 	return ui_compute(s->value, s->unit);
 }
 
@@ -34,70 +34,71 @@ static unsigned int compute_actual(float width)
 
 void ui_widget_compute_border_style(ui_widget_t* w)
 {
-	int key;
-	css_unit_value_t* s;
-	ui_border_style_t* b;
+	// TODO
+	// int key;
+	// css_unit_value_t* s;
+	// ui_border_style_t* b;
 
-	b = &w->computed_style.border;
-	memset(b, 0, sizeof(ui_border_style_t));
-	for (key = css_key_border_start; key <= css_key_border_end; ++key) {
-		s = &w->style->list[key];
-		if (!s->is_valid) {
-			continue;
-		}
-		switch (key) {
-		case css_key_border_top_color:
-			b->top.color = s->color;
-			break;
-		case css_key_border_right_color:
-			b->right.color = s->color;
-			break;
-		case css_key_border_bottom_color:
-			b->bottom.color = s->color;
-			break;
-		case css_key_border_left_color:
-			b->left.color = s->color;
-			break;
-		case css_key_border_top_width:
-			b->top.width = compute_metric_x(w, s);
-			break;
-		case css_key_border_right_width:
-			b->right.width = compute_metric_y(w, s);
-			break;
-		case css_key_border_bottom_width:
-			b->bottom.width = compute_metric_x(w, s);
-			break;
-		case css_key_border_left_width:
-			b->left.width = compute_metric_y(w, s);
-			break;
-		case css_key_border_top_style:
-			b->top.style = s->val_keyword;
-			break;
-		case css_key_border_right_style:
-			b->right.style = s->val_keyword;
-			break;
-		case css_key_border_bottom_style:
-			b->bottom.style = s->val_keyword;
-			break;
-		case css_key_border_left_style:
-			b->left.style = s->val_keyword;
-			break;
-		case css_key_border_top_left_radius:
-			b->top_left_radius = compute_metric_x(w, s);
-			break;
-		case css_key_border_top_right_radius:
-			b->top_right_radius = compute_metric_x(w, s);
-			break;
-		case css_key_border_bottom_left_radius:
-			b->bottom_left_radius = compute_metric_x(w, s);
-			break;
-		case css_key_border_bottom_right_radius:
-			b->bottom_right_radius = compute_metric_x(w, s);
-			break;
-		default:
-			break;
-		}
-	}
+	// b = &w->computed_style.border;
+	// memset(b, 0, sizeof(ui_border_style_t));
+	// for (key = css_key_border_start; key <= css_key_border_end; ++key) {
+	// 	s = &w->style->list[key];
+	// 	if (!s->is_valid) {
+	// 		continue;
+	// 	}
+	// 	switch (key) {
+	// 	case css_key_border_top_color:
+	// 		b->top.color = s->color;
+	// 		break;
+	// 	case css_key_border_right_color:
+	// 		b->right.color = s->color;
+	// 		break;
+	// 	case css_key_border_bottom_color:
+	// 		b->bottom.color = s->color;
+	// 		break;
+	// 	case css_key_border_left_color:
+	// 		b->left.color = s->color;
+	// 		break;
+	// 	case css_key_border_top_width:
+	// 		b->top.width = compute_metric_x(w, s);
+	// 		break;
+	// 	case css_key_border_right_width:
+	// 		b->right.width = compute_metric_y(w, s);
+	// 		break;
+	// 	case css_key_border_bottom_width:
+	// 		b->bottom.width = compute_metric_x(w, s);
+	// 		break;
+	// 	case css_key_border_left_width:
+	// 		b->left.width = compute_metric_y(w, s);
+	// 		break;
+	// 	case css_key_border_top_style:
+	// 		b->top.style = s->val_keyword;
+	// 		break;
+	// 	case css_key_border_right_style:
+	// 		b->right.style = s->val_keyword;
+	// 		break;
+	// 	case css_key_border_bottom_style:
+	// 		b->bottom.style = s->val_keyword;
+	// 		break;
+	// 	case css_key_border_left_style:
+	// 		b->left.style = s->val_keyword;
+	// 		break;
+	// 	case css_key_border_top_left_radius:
+	// 		b->top_left_radius = compute_metric_x(w, s);
+	// 		break;
+	// 	case css_key_border_top_right_radius:
+	// 		b->top_right_radius = compute_metric_x(w, s);
+	// 		break;
+	// 	case css_key_border_bottom_left_radius:
+	// 		b->bottom_left_radius = compute_metric_x(w, s);
+	// 		break;
+	// 	case css_key_border_bottom_right_radius:
+	// 		b->bottom_right_radius = compute_metric_x(w, s);
+	// 		break;
+	// 	default:
+	// 		break;
+	// 	}
+	// }
 }
 
 /** 计算部件边框样式的实际值 */

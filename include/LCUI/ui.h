@@ -773,7 +773,8 @@ LCUI_API void ui_print_tree(ui_widget_t* w);
 
 // Style
 
-INLINE LCUI_BOOL ui_widget_check_style_type(ui_widget_t *w, int key, css_style_value_type_t type)
+INLINE LCUI_BOOL ui_widget_check_style_type(ui_widget_t* w, int key,
+					    css_style_value_type_t type)
 {
 	return w->style->list[key].type == type;
 }
@@ -807,8 +808,15 @@ LCUI_API void ui_widget_update_children_style(ui_widget_t* w);
 LCUI_API void ui_widget_refresh_children_style(ui_widget_t* w);
 LCUI_API void ui_widget_set_style_string(ui_widget_t* w, const char* name,
 					 const char* value);
-LCUI_API void ui_widget_set_style_unit_value(ui_widget_t *w, int key, css_numberic_value_t value, css_unit_t unit);
-LCUI_API void ui_widget_set_style_keyword_value(ui_widget_t *w, int key, css_keyword_value_t value);
+LCUI_API void ui_widget_set_style_unit_value(ui_widget_t* w, int key,
+					     css_numberic_value_t value,
+					     css_unit_t unit);
+LCUI_API void ui_widget_set_style_keyword_value(ui_widget_t* w, int key,
+						css_keyword_value_t value);
+LCUI_API void ui_widget_set_style_color_value(ui_widget_t* w, int key,
+					      css_color_value_t value);
+LCUI_API void ui_widget_set_style_numberic_value(ui_widget_t* w, int key,
+						 css_numberic_value_t value);
 LCUI_API void ui_widget_add_task_by_style(ui_widget_t* w, int key);
 LCUI_API void ui_widget_force_update_style(ui_widget_t* w);
 LCUI_API void ui_widget_force_refresh_style(ui_widget_t* w);
