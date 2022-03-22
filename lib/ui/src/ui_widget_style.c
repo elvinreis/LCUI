@@ -1,6 +1,6 @@
 ﻿#include <string.h>
 #include <LCUI/util.h>
-#include <LCUI/css/parser.h>
+#include <LCUI/css.h>
 #include "../include/ui.h"
 #include "internal.h"
 
@@ -24,10 +24,10 @@ static float ui_widget_compute_metric_x(ui_widget_t* w, int key)
 			return 0;
 		}
 		if (ui_widget_has_absolute_position(w)) {
-			return w->parent->box.padding.width *
-			       s->percentage_value;
+			return (float)(w->parent->box.padding.width *
+			       s->percentage_value);
 		}
-		return w->parent->box.content.width * s->percentage_value;
+		return (float)(w->parent->box.content.width * s->percentage_value);
 	}
 	return ui_compute(s->unit_value.value, s->unit_value.unit);
 }

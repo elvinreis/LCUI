@@ -36,7 +36,7 @@
 LCUI_BOOL css_parse_numberic_value(css_style_value_t *s, const char *str)
 {
 	s->type = CSS_NUMBERIC_VALUE;
-	return sscanf(str, "%g", s->numberic_value) == 1;
+	return sscanf(str, "%f", &s->numberic_value) == 1;
 }
 
 LCUI_BOOL css_parse_unit_value(css_style_value_t *s, const char *str)
@@ -73,7 +73,7 @@ LCUI_BOOL css_parse_unit_value(css_style_value_t *s, const char *str)
 	}
 	num_str[n] = 0;
 	s->type = CSS_UNIT_VALUE;
-	sscanf(num_str, "%g", &s->unit_value.value);
+	sscanf(num_str, "%f", &s->unit_value.value);
 	strncpy(s->unit_value.unit, p, 4);
 	s->unit_value.unit[3] = 0;
 	return TRUE;

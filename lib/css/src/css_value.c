@@ -37,7 +37,7 @@ struct css_valdef_t {
 		int ident;
 		/** list_t<css_valdef_t> */
 		list_t children;
-		css_value_type_record_t *type;
+		const css_value_type_record_t *type;
 	};
 };
 
@@ -67,7 +67,7 @@ typedef struct css_value_matcher_t {
 	const char *cur;
 
 	char *value_str;
-	unsigned value_str_len;
+	size_t value_str_len;
 
 	css_style_value_t value;
 	unsigned value_len;
@@ -174,6 +174,11 @@ const css_value_type_record_t *css_register_value_type(
 const css_value_type_record_t *css_get_value_type(const char *type_name)
 {
 	return dict_fetch_value(css_value.types, type_name);
+}
+
+const css_valdef_t *css_resolve_valdef_alias(const char *alias)
+{
+	return dict_fetch_value(css_value.alias, alias);
 }
 
 css_valdef_parser_t *css_valdef_parser_create(size_t buffer_size)
@@ -351,8 +356,8 @@ static int css_valdef_parser_parse_keyword(css_valdef_parser_t *parser)
 	parser->valdef = css_valdef_create(CSS_VALDEF_SIGN_NONE);
 	parser->valdef->ident = css_get_keyword_key(parser->buffer);
 	if (parser->valdef->ident == -1) {
-		return css_valdef_parser_error("unknown keyword: `%s`\n",
-					       parser->buffer);
+		return css_valdef_parser_error(
+		    parser, "unknown keyword: `%s`\n", parser->buffer);
 	}
 	css_valdef_parser_reset_target(parser);
 	return 0;
@@ -387,8 +392,8 @@ static int css_valdef_parser_parse_data_type(css_valdef_parser_t *parser)
 	}
 	parser->valdef->source = css_resolve_valdef_alias(parser->buffer);
 	if (!parser->valdef->source) {
-		return css_valdef_parser_error("unknown data type: `%s`\n",
-					       parser->buffer);
+		return css_valdef_parser_error(
+		    parser, "unknown data type: `%s`\n", parser->buffer);
 	}
 	return 0;
 }
@@ -408,8 +413,8 @@ static int css_valdef_parser_parse_sign(css_valdef_parser_t *parser)
 				break;
 			}
 		default:
-			return css_valdef_parser_error("unknown sign: `%s`\n",
-						       parser->buffer);
+			return css_valdef_parser_error(
+			    parser, "unknown sign: `%s`\n", parser->buffer);
 		}
 		return 0;
 	case '[':
@@ -435,7 +440,7 @@ static int css_valdef_parser_parse_sign(css_valdef_parser_t *parser)
 		css_valdef_parser_commit(parser,
 					 CSS_VALDEF_SIGN_DOUBLE_AMPERSAND);
 	} else {
-		return css_valdef_parser_error("unknown sign: `%s`\n",
+		return css_valdef_parser_error(parser, "unknown sign: `%s`\n",
 					       parser->buffer);
 	}
 	if (parser->target == CSS_VALDEF_PARSER_TARGET_KEYWORD ||
@@ -530,7 +535,7 @@ css_valdef_t *css_compile_valdef(const char *definition_str)
 
 static int css_value_matcher_resolve_next_value(css_value_matcher_t *matcher)
 {
-	css_valdef_t *list;
+	css_style_value_t *list;
 	LCUI_BOOL has_quote = FALSE;
 	const char *p = matcher->cur;
 
@@ -579,7 +584,7 @@ copy_value_str:
 	matcher->value_str[matcher->value_str_len] = 0;
 
 	list = realloc(matcher->value.array_value,
-		       sizeof(css_valdef_t) * (matcher->value_len + 1));
+		       sizeof(css_style_value_t) * (matcher->value_len + 1));
 	if (!list) {
 		matcher->value_len--;
 		return -1;
@@ -587,14 +592,12 @@ copy_value_str:
 	if (matcher->value_len > 0) {
 		matcher->index++;
 	} else {
-		list[0].ident = 0;
-		list[0].sign = CSS_VALDEF_SIGN_NONE;
-		list[0].source = NULL;
+		list[0].type = CSS_NO_VALUE;
+		list[0].integer_value = 0;
 	}
+	list[matcher->value_len].type = CSS_NO_VALUE;
+	list[matcher->value_len].integer_value = 0;
 	matcher->value.array_value = list;
-	list[matcher->value_len].ident = 0;
-	list[matcher->value_len].sign = CSS_VALDEF_SIGN_NONE;
-	list[matcher->value_len].source = NULL;
 	return 0;
 }
 
@@ -607,7 +610,6 @@ css_value_matcher_t *css_value_matcher_create(const char *str)
 		return NULL;
 	}
 	matcher->value.type = CSS_ARRAY_VALUE;
-	list_create(&matcher->value.array_value);
 	css_value_matcher_resolve_next_value(matcher);
 	return matcher;
 }
@@ -623,10 +625,12 @@ static void css_value_matcher_destroy(css_value_matcher_t *matcher)
 	matcher->value_str_len = 0;
 }
 
+static int css_value_matcher_match(css_value_matcher_t *matcher,
+				   const css_valdef_t *valdef);
+
 static int css_value_matcher_match_data_type(css_value_matcher_t *matcher,
 					     const css_valdef_t *valdef)
 {
-	const css_value_type_record_t *record;
 	css_value_matcher_t *submatcher;
 
 	if (valdef->source) {
@@ -637,7 +641,7 @@ static int css_value_matcher_match_data_type(css_value_matcher_t *matcher,
 		matcher->index += submatcher->index;
 		matcher->cur = submatcher->cur + submatcher->value_str_len;
 		css_array_value_concat(&matcher->value, &submatcher->value);
-		css_value_matcher_destroy(&submatcher);
+		css_value_matcher_destroy(submatcher);
 		return css_value_matcher_resolve_next_value(matcher);
 	}
 	if (!valdef->type ||
@@ -695,13 +699,13 @@ int css_parse_value(const css_valdef_t *valdef, const char *str,
 	if (!matcher) {
 		return -1;
 	}
-	ret = css_value_matcher_match(&matcher, valdef);
+	ret = css_value_matcher_match(matcher, valdef);
 	// TODO: 提取匹配结果
-	css_value_matcher_destroy(&matcher);
+	css_value_matcher_destroy(matcher);
 	return ret;
 }
 
-int css_register_valdef_alias(const char *definitons, const char *alias)
+int css_register_valdef_alias(const char *alias, const char *definitons)
 {
 	css_valdef_t *valdef;
 
@@ -710,12 +714,7 @@ int css_register_valdef_alias(const char *definitons, const char *alias)
 	}
 	valdef = css_compile_valdef(definitons);
 	if (valdef) {
-		return dict_add(css_value.alias, valdef, alias);
+		return dict_add(css_value.alias, (void*)alias, valdef);
 	}
 	return -3;
-}
-
-const css_valdef_t *css_resolve_valdef_alias(const char *alias)
-{
-	return dict_fetch_value(css_value.alias, alias);
 }

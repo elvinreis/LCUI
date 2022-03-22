@@ -158,10 +158,10 @@ void ui_widget_compute_background(ui_widget_t *w, pd_background_t *out)
 			height = (float)bg->image->height;
 			break;
 		}
-		out->position.x = ui_compute_actual(x, CSS_UNIT_PX);
-		out->position.y = ui_compute_actual(y, CSS_UNIT_PX);
-		out->size.width = ui_compute_actual(width, CSS_UNIT_PX);
-		out->size.height = ui_compute_actual(height, CSS_UNIT_PX);
+		out->position.x = ui_compute_actual(x, "px");
+		out->position.y = ui_compute_actual(y, "px");
+		out->size.width = ui_compute_actual(width, "px");
+		out->size.height = ui_compute_actual(height, "px");
 	} else {
 		// TODO
 		// type = CSS_UNIT_PX;

@@ -641,7 +641,7 @@ LCUI_API void ui_trash_add(ui_widget_t* w);
 // Metrics
 
 /** 转换成单位为 px 的度量值 */
-LCUI_API float ui_compute(float value, css_unit_t type);
+LCUI_API float ui_compute(float value, const css_unit_t type);
 
 /** 设置密度 */
 LCUI_API void ui_set_density(float density);
@@ -901,7 +901,7 @@ LCUI_API void ui_widget_set_padding(ui_widget_t* w, float top, float right,
 				    float bottom, float left);
 LCUI_API void ui_widget_set_margin(ui_widget_t* w, float top, float right,
 				   float bottom, float left);
-LCUI_API void ui_widget_set_border_color(ui_widget_t* w, pd_color_t color);
+LCUI_API void ui_widget_set_border_color(ui_widget_t* w, css_color_value_t color);
 LCUI_API void ui_widget_set_border_width(ui_widget_t* w, float width);
 LCUI_API void ui_widget_set_border_style(ui_widget_t* w, int style);
 LCUI_API void ui_widget_set_border(ui_widget_t* w, float width, int style,
@@ -910,9 +910,9 @@ LCUI_API void ui_widget_set_box_shadow(ui_widget_t* w, float x, float y,
 				       float blur, pd_color_t color);
 LCUI_API void ui_widget_move(ui_widget_t* w, float left, float top);
 LCUI_API void ui_widget_resize(ui_widget_t* w, float width, float height);
-LCUI_API css_unit_value_t* ui_widget_get_style(ui_widget_t* w, int key);
+LCUI_API css_style_value_t* ui_widget_get_style(ui_widget_t* w, int key);
 LCUI_API int ui_widget_unset_style(ui_widget_t* w, int key);
-LCUI_API css_unit_value_t* ui_widget_get_matched_style(ui_widget_t* w, int key);
+LCUI_API css_style_value_t* ui_widget_get_matched_style(ui_widget_t* w, int key);
 LCUI_API void ui_widget_set_visibility(ui_widget_t* w, const char* value);
 
 INLINE void ui_widget_set_visible(ui_widget_t* w)

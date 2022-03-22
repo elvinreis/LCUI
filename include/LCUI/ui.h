@@ -910,9 +910,9 @@ LCUI_API void ui_widget_set_box_shadow(ui_widget_t* w, float x, float y,
 				       float blur, pd_color_t color);
 LCUI_API void ui_widget_move(ui_widget_t* w, float left, float top);
 LCUI_API void ui_widget_resize(ui_widget_t* w, float width, float height);
-LCUI_API css_unit_value_t* ui_widget_get_style(ui_widget_t* w, int key);
+LCUI_API css_style_value_t* ui_widget_get_style(ui_widget_t* w, int key);
 LCUI_API int ui_widget_unset_style(ui_widget_t* w, int key);
-LCUI_API css_unit_value_t* ui_widget_get_matched_style(ui_widget_t* w, int key);
+LCUI_API css_style_value_t* ui_widget_get_matched_style(ui_widget_t* w, int key);
 LCUI_API void ui_widget_set_visibility(ui_widget_t* w, const char* value);
 
 INLINE void ui_widget_set_visible(ui_widget_t* w)
