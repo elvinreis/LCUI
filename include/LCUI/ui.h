@@ -641,7 +641,7 @@ LCUI_API void ui_trash_add(ui_widget_t* w);
 // Metrics
 
 /** 转换成单位为 px 的度量值 */
-LCUI_API float ui_compute(float value, css_unit_t type);
+LCUI_API float ui_compute(float value, const css_unit_t type);
 
 /** 设置密度 */
 LCUI_API void ui_set_density(float density);
@@ -901,7 +901,7 @@ LCUI_API void ui_widget_set_padding(ui_widget_t* w, float top, float right,
 				    float bottom, float left);
 LCUI_API void ui_widget_set_margin(ui_widget_t* w, float top, float right,
 				   float bottom, float left);
-LCUI_API void ui_widget_set_border_color(ui_widget_t* w, pd_color_t color);
+LCUI_API void ui_widget_set_border_color(ui_widget_t* w, css_color_value_t color);
 LCUI_API void ui_widget_set_border_width(ui_widget_t* w, float width);
 LCUI_API void ui_widget_set_border_style(ui_widget_t* w, int style);
 LCUI_API void ui_widget_set_border(ui_widget_t* w, float width, int style,

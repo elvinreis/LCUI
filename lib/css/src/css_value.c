@@ -330,6 +330,23 @@ static int css_valdef_parser_close_bracket(css_valdef_parser_t *parser)
 	return 0;
 }
 
+static int css_valdef_parser_parse_keyword_end(css_valdef_parser_t *parser)
+{
+	// Example:
+	// top left | right
+	//         ^
+	//         |
+	//        cur
+	parser->valdef = css_valdef_create(CSS_VALDEF_SIGN_NONE);
+	parser->valdef->ident = css_get_keyword_key(parser->buffer);
+	if (parser->valdef->ident == -1) {
+		return css_valdef_parser_error(
+		    parser, "unknown keyword: `%s`\n", parser->buffer);
+	}
+	css_valdef_parser_reset_target(parser);
+	return 0;
+}
+
 static int css_valdef_parser_parse_keyword(css_valdef_parser_t *parser)
 {
 	switch (*parser->cur) {
@@ -347,19 +364,23 @@ static int css_valdef_parser_parse_keyword(css_valdef_parser_t *parser)
 		css_valdef_parser_get_char(parser);
 		return 0;
 	}
+	return css_valdef_parser_parse_keyword_end(parser);
+}
 
-	// Example:
-	// top left | right
-	//         ^
-	//         |
-	//        cur
-	parser->valdef = css_valdef_create(CSS_VALDEF_SIGN_NONE);
-	parser->valdef->ident = css_get_keyword_key(parser->buffer);
-	if (parser->valdef->ident == -1) {
-		return css_valdef_parser_error(
-		    parser, "unknown keyword: `%s`\n", parser->buffer);
+static int css_valdef_parser_parse_data_type_end(css_valdef_parser_t *parser)
+{
+	parser->target = CSS_VALDEF_PARSER_TARGET_NONE;
+	parser->valdef = css_valdef_create(CSS_VALDEF_SIGN_ANGLE_BRACKET);
+	parser->valdef->source = NULL;
+	parser->valdef->type = css_get_value_type(parser->buffer);
+	if (parser->valdef->type) {
+		return 0;
 	}
-	css_valdef_parser_reset_target(parser);
+	parser->valdef->source = css_resolve_valdef_alias(parser->buffer);
+	if (!parser->valdef->source) {
+		return css_valdef_parser_error(
+		    parser, "unknown data type: `%s`\n", parser->buffer);
+	}
 	return 0;
 }
 
@@ -382,18 +403,25 @@ static int css_valdef_parser_parse_data_type(css_valdef_parser_t *parser)
 		css_valdef_parser_get_char(parser);
 		return 0;
 	}
+	return css_valdef_parser_parse_data_type_end(parser);
+}
 
-	parser->target = CSS_VALDEF_PARSER_TARGET_NONE;
-	parser->valdef = css_valdef_create(CSS_VALDEF_SIGN_ANGLE_BRACKET);
-	parser->valdef->source = NULL;
-	parser->valdef->type = css_get_value_type(parser->buffer);
-	if (parser->valdef->type) {
-		return 0;
+static int css_valdef_parser_parse_sign_end(css_valdef_parser_t *parser)
+{
+	if (parser->pos == 0) {
+		css_valdef_parser_commit(parser, CSS_VALDEF_SIGN_JUXTAPOSITION);
+	} else if (parser->pos == 1 && parser->buffer[0] == '|') {
+		css_valdef_parser_commit(parser, CSS_VALDEF_SIGN_SINGLE_BAR);
+	} else if (parser->pos == 2 && parser->buffer[0] == '&') {
+		css_valdef_parser_commit(parser,
+					 CSS_VALDEF_SIGN_DOUBLE_AMPERSAND);
+	} else {
+		return css_valdef_parser_error(parser, "unknown sign: `%s`\n",
+					       parser->buffer);
 	}
-	parser->valdef->source = css_resolve_valdef_alias(parser->buffer);
-	if (!parser->valdef->source) {
-		return css_valdef_parser_error(
-		    parser, "unknown data type: `%s`\n", parser->buffer);
+	if (parser->target == CSS_VALDEF_PARSER_TARGET_KEYWORD ||
+	    parser->target == CSS_VALDEF_PARSER_TARGET_NONE) {
+		css_valdef_parser_reset_target(parser);
 	}
 	return 0;
 }
@@ -432,22 +460,7 @@ static int css_valdef_parser_parse_sign(css_valdef_parser_t *parser)
 		parser->target = CSS_VALDEF_PARSER_TARGET_KEYWORD;
 		break;
 	}
-	if (parser->pos == 0) {
-		css_valdef_parser_commit(parser, CSS_VALDEF_SIGN_JUXTAPOSITION);
-	} else if (parser->pos == 1 && parser->buffer[0] == '|') {
-		css_valdef_parser_commit(parser, CSS_VALDEF_SIGN_SINGLE_BAR);
-	} else if (parser->pos == 2 && parser->buffer[0] == '&') {
-		css_valdef_parser_commit(parser,
-					 CSS_VALDEF_SIGN_DOUBLE_AMPERSAND);
-	} else {
-		return css_valdef_parser_error(parser, "unknown sign: `%s`\n",
-					       parser->buffer);
-	}
-	if (parser->target == CSS_VALDEF_PARSER_TARGET_KEYWORD ||
-	    parser->target == CSS_VALDEF_PARSER_TARGET_NONE) {
-		css_valdef_parser_reset_target(parser);
-	}
-	return 0;
+	return css_valdef_parser_parse_sign_end(parser);
 }
 
 static int css_valdef_parser_parse_target(css_valdef_parser_t *parser)
@@ -502,7 +515,7 @@ static size_t css_valdef_parser_parse(css_valdef_parser_t *parser,
 			css_valdef_parser_parse_keyword(parser);
 			break;
 		case CSS_VALDEF_PARSER_TARGET_ERROR:
-			return 0;
+			break;
 		default:
 			break;
 		}
@@ -510,6 +523,23 @@ static size_t css_valdef_parser_parse(css_valdef_parser_t *parser,
 		++size;
 	}
 	return size;
+}
+
+static int css_valdef_parser_finish(css_valdef_parser_t *parser)
+{
+	switch (parser->target) {
+	case CSS_VALDEF_PARSER_TARGET_KEYWORD:
+		return css_valdef_parser_parse_keyword_end(parser);
+	case CSS_VALDEF_PARSER_TARGET_DATA_TYPE:
+		return css_valdef_parser_parse_data_type_end(parser);
+	case CSS_VALDEF_PARSER_TARGET_SIGN:
+		return css_valdef_parser_parse_sign_end(parser);
+	case CSS_VALDEF_PARSER_TARGET_ERROR:
+		return -1;
+	default:
+		break;
+	}
+	return 0;
 }
 
 css_valdef_t *css_compile_valdef(const char *definition_str)
@@ -527,6 +557,7 @@ css_valdef_t *css_compile_valdef(const char *definition_str)
 			return NULL;
 		}
 	}
+	css_valdef_parser_finish(parser);
 	valdef = parser->valdef;
 	parser->valdef = NULL;
 	css_valdef_parser_destroy(parser);
@@ -609,6 +640,7 @@ css_value_matcher_t *css_value_matcher_create(const char *str)
 	if (!matcher) {
 		return NULL;
 	}
+	matcher->cur = str;
 	matcher->value.type = CSS_ARRAY_VALUE;
 	css_value_matcher_resolve_next_value(matcher);
 	return matcher;
@@ -700,7 +732,10 @@ int css_parse_value(const css_valdef_t *valdef, const char *str,
 		return -1;
 	}
 	ret = css_value_matcher_match(matcher, valdef);
-	// TODO: 提取匹配结果
+	if (ret == 0) {
+		*val = matcher->value;
+		matcher->value.type = CSS_NO_VALUE;
+	}
 	css_value_matcher_destroy(matcher);
 	return ret;
 }
@@ -714,7 +749,7 @@ int css_register_valdef_alias(const char *alias, const char *definitons)
 	}
 	valdef = css_compile_valdef(definitons);
 	if (valdef) {
-		return dict_add(css_value.alias, (void*)alias, valdef);
+		return dict_add(css_value.alias, (void *)alias, valdef);
 	}
 	return -3;
 }

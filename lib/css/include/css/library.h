@@ -132,13 +132,13 @@ LCUI_API int css_register_keyword(int key, const char *name);
 
 LCUI_API int css_get_keyword_key(const char *str);
 
-LCUI_API const char *css_get_keyword_name(int val);
+LCUI_API const css_property_definition_t *css_get_property(const char *name);
 
-LCUI_API const char *css_get_property_name(int key);
+LCUI_API const css_property_definition_t *css_get_property_by_key(int key);
 
 LCUI_API int css_get_property_count(void);
 
-LCUI_API void css_style_declartation_print(css_style_decl_t *ss);
+LCUI_API void css_style_declaration_print(css_style_decl_t *ss);
 
 LCUI_API void css_selector_print(css_selector_t *selector);
 

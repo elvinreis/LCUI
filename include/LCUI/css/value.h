@@ -16,8 +16,8 @@ LCUI_API const css_value_type_record_t *css_register_value_type(
 LCUI_API const css_value_type_record_t *css_get_value_type(
     const char *type_name);
 
-LCUI_API int css_register_valdef_alias(const char *definitons,
-				       const char *alias);
+LCUI_API int css_register_valdef_alias(const char *alias,
+				       const char *definitons);
 
 LCUI_API const css_valdef_t *css_resolve_valdef_alias(const char *alias);
 

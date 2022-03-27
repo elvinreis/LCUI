@@ -191,10 +191,10 @@ static int css_register_property_with_key(int key, const char *name, const char 
 	return prop->key;
 }
 
-int css_register_property(const char *name, const char *syntax,
+int css_register_property(const char *name, const char *definition,
 			  const char *initial_value)
 {
-	return css_register_property_with_key((int)css.properties_length, name, syntax, initial_value);
+	return css_register_property_with_key((int)css.properties_length, name, definition, initial_value);
 }
 
 const css_property_definition_t *css_get_property(const char *name)
@@ -1300,13 +1300,13 @@ int css_query_selector_from_group(int group, const char *name, css_selector_t *s
 
 static void css_print_property_name(int key)
 {
-	const char *name;
+	const css_property_definition_t *prop;
 
-	name = css_get_property_name(key);
-	if (name) {
-		logger_debug("\t%s", name);
+	prop = css_get_property_by_key(key);
+	if (prop) {
+		logger_debug("\t%s", prop->name);
 	} else {
-		logger_debug("\t<unknown style %d>", key);
+		logger_debug("\t<unknown property %d>", key);
 	}
 	logger_debug("%s: ", key > STYLE_KEY_TOTAL ? " (+)" : "");
 }
@@ -1328,7 +1328,7 @@ void css_style_properties_print(css_style_props_t *list)
 	}
 }
 
-void css_style_declartation_print(css_style_decl_t *ss)
+void css_style_declaration_print(css_style_decl_t *ss)
 {
 	unsigned key;
 	css_style_value_t *s;
@@ -1464,7 +1464,7 @@ void css_print_style_rules_by_selector(css_selector_t *s)
 	}
 	list_destroy(&list, NULL);
 	printf("[selector(%u) final stylesheet] {\n", s->hash);
-	css_style_declartation_print(ss);
+	css_style_declaration_print(ss);
 	printf("}\n");
 	css_style_declaration_destroy(ss);
 	printf("selector(%u) stylesheets end\n", s->hash);

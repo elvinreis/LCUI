@@ -138,7 +138,7 @@ LCUI_API const char *css_get_property_name(int key);
 
 LCUI_API int css_get_property_count(void);
 
-LCUI_API void css_style_declartation_print(css_style_decl_t *ss);
+LCUI_API void css_style_declaration_print(css_style_decl_t *ss);
 
 LCUI_API void css_selector_print(css_selector_t *selector);
 
