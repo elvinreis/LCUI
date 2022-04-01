@@ -336,8 +336,7 @@ typedef struct css_property_definition_t {
 
 typedef struct css_valdef_t css_valdef_t;
 
-typedef int (*css_value_parse_func_t)(css_style_value_t *, const char *,
-				      size_t);
+typedef LCUI_BOOL (*css_value_parse_func_t)(css_style_value_t *, const char *);
 
 typedef struct css_value_type_record_t css_value_type_record_t;
 

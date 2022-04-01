@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "../include/css/style_value.h"
+#include "../include/css/library.h"
 
 // https://developer.mozilla.org/en-US/docs/Web/API/CSSStyleValue/parse
 
@@ -9,6 +10,7 @@ css_style_value_t *css_style_value_parse(const char *property,
 					 const char *css_text)
 {
 	// TODO
+	return NULL;
 }
 
 css_style_value_t *css_array_value_create(size_t len)

@@ -1,5 +1,8 @@
 #include "css/def.h"
+#include "css/selector.h"
+#include "css/keywords.h"
 #include "css/style_value.h"
+#include "css/properties.h"
 #include "css/library.h"
 #include "css/parser.h"
 #include "css/utils.h"

@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
+#include "../include/css/keywords.h"
 #include "../include/css/library.h"
 #include "../include/css/style_value.h"
 
@@ -147,8 +148,8 @@ static css_valdef_t *css_valdef_create(css_valdef_sign_t sign)
 
 static void css_valdef_append(css_valdef_t *valdef, css_valdef_t *child)
 {
-	assert(valdef->sign == CSS_VALDEF_SIGN_NONE ||
-	       valdef->sign == CSS_VALDEF_SIGN_ANGLE_BRACKET);
+	assert(valdef->sign != CSS_VALDEF_SIGN_NONE &&
+	       valdef->sign != CSS_VALDEF_SIGN_ANGLE_BRACKET);
 	list_append(&valdef->children, child);
 }
 
@@ -212,8 +213,7 @@ static int css_valdef_parser_error(css_valdef_parser_t *parser, const char *fmt,
 	va_list args;
 
 	va_start(args, fmt);
-	len =
-	    vsnprintf(parser->buffer, CSS_VALDEF_PARSER_ERROR_SIZE, fmt, args);
+	len = vsnprintf(parser->error, CSS_VALDEF_PARSER_ERROR_SIZE, fmt, args);
 	va_end(args);
 	parser->buffer[CSS_VALDEF_PARSER_ERROR_SIZE - 1] = 0;
 	parser->target = CSS_VALDEF_PARSER_TARGET_ERROR;
@@ -676,10 +676,9 @@ static int css_value_matcher_match_data_type(css_value_matcher_t *matcher,
 		css_value_matcher_destroy(submatcher);
 		return css_value_matcher_resolve_next_value(matcher);
 	}
-	if (!valdef->type ||
-	    valdef->type->parse_value(
-		matcher->value.array_value + matcher->index, matcher->value_str,
-		matcher->value_str_len) != 0) {
+	if (!valdef->type || valdef->type->parse_value(
+				 matcher->value.array_value + matcher->index,
+				 matcher->value_str) != 0) {
 		return -1;
 	}
 	return css_value_matcher_resolve_next_value(matcher);

@@ -77,31 +77,6 @@ LCUI_API int css_style_declaration_merge_properties(css_style_decl_t *ss,
 LCUI_API int css_style_declaration_replace(css_style_decl_t *dest,
 					   const css_style_decl_t *src);
 
-LCUI_API css_selector_t *css_selector_create(const char *selector);
-
-LCUI_API css_selector_t *css_selector_duplicate(css_selector_t *selector);
-
-LCUI_API int css_selector_append(css_selector_t *selector,
-				 css_selector_node_t *node);
-
-LCUI_API void css_selector_update(css_selector_t *s);
-
-LCUI_API void css_selector_destroy(css_selector_t *s);
-
-LCUI_API int css_selector_node_get_name_list(css_selector_node_t *sn,
-					     list_t *names);
-
-LCUI_API int css_selector_node_update(css_selector_node_t *node);
-
-LCUI_API void css_selector_node_destroy(css_selector_node_t *node);
-
-/**
- * 匹配选择器节点
- * 左边的选择器必须包含右边的选择器的所有属性。
- */
-LCUI_API LCUI_BOOL css_selector_node_match(css_selector_node_t *sn1,
-					   css_selector_node_t *sn2);
-
 LCUI_API int css_add_style_sheet(css_selector_t *selector,
 				css_style_decl_t *in_ss, const char *space);
 
@@ -126,27 +101,19 @@ LCUI_API void css_get_computed_style(css_selector_t *s, css_style_decl_t *out_ss
 
 LCUI_API void css_print_style_rules_by_selector(css_selector_t *s);
 
-LCUI_API int css_register_property_name(const char *name);
-
-LCUI_API int css_register_keyword(int key, const char *name);
-
-LCUI_API int css_get_keyword_key(const char *str);
-
 LCUI_API const css_property_definition_t *css_get_property(const char *name);
 
 LCUI_API const css_property_definition_t *css_get_property_by_key(int key);
 
-LCUI_API int css_get_property_count(void);
+LCUI_API unsigned css_get_property_count(void);
 
 LCUI_API void css_style_declaration_print(css_style_decl_t *ss);
 
-LCUI_API void css_selector_print(css_selector_t *selector);
+LCUI_API void css_library_print_all(void);
 
-LCUI_API void css_print_all(void);
+LCUI_API void css_init_library(void);
 
-LCUI_API void css_init(void);
-
-LCUI_API void css_destroy(void);
+LCUI_API void css_destroy_library(void);
 
 LCUI_END_HEADER
 

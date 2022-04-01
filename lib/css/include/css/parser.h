@@ -78,7 +78,7 @@ typedef struct css_style_parser_t {
 	char *space;   /**< 样式记录所属的空间 */
 	int prop_key;
 
-	void (*style_handler)(int, css_unit_value_t *, void *);
+	void (*style_handler)(int, css_style_value_t *, void *);
 	void *style_handler_arg;
 
 	list_t selectors;        /**< 当前匹配到的选择器列表 */
@@ -142,7 +142,7 @@ LCUI_API void css_style_parser_init(css_style_parser_t *parser,
 LCUI_API void css_style_parser_destroy(css_style_parser_t *parser);
 
 LCUI_API void css_style_parser_set_property(css_style_parser_t *ctx, int key,
-					    css_unit_value_t *s);
+					    css_style_value_t *s);
 
 LCUI_API void css_style_parser_commit(css_style_parser_t *parser);
 
