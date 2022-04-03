@@ -359,8 +359,7 @@ static int css_valdef_parser_parse_keyword(css_valdef_parser_t *parser)
 	case '<':
 		break;
 	case '>':
-		parser->target = CSS_VALDEF_PARSER_TARGET_ERROR;
-		return -1;
+		return css_valdef_parser_error(parser, "syntax error");
 	default:
 		css_valdef_parser_get_char(parser);
 		return 0;
@@ -484,8 +483,7 @@ static int css_valdef_parser_parse_target(css_valdef_parser_t *parser)
 	case '{':
 	case '}':
 	case '>':
-		parser->target = CSS_VALDEF_PARSER_TARGET_ERROR;
-		return -1;
+		return css_valdef_parser_error(parser, "syntax error");
 	default:
 		css_valdef_parser_reset_target(parser);
 		parser->target = CSS_VALDEF_PARSER_TARGET_KEYWORD;
