@@ -2,8 +2,18 @@
 #include "css/selector.h"
 #include "css/keywords.h"
 #include "css/style_value.h"
+#include "css/data_types.h"
 #include "css/properties.h"
 #include "css/library.h"
 #include "css/parser.h"
 #include "css/utils.h"
 #include "css/value.h"
+
+
+#ifndef LIBCSS_INCLUDE_CSS_H
+#define LIBCSS_INCLUDE_CSS_H
+
+LCUI_API void css_init(void);
+LCUI_API void css_destroy(void);
+
+#endif
