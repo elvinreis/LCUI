@@ -818,7 +818,6 @@ void css_init_library(void)
 	dt.key_destructor = ikey_dict_key_destructor;
 	css_library.cache = dict_create(&dt, NULL);
 	css_library.strpool = strpool_create();
-	css_init_value_definitons();
 	list_create(&css_library.groups);
 }
 
