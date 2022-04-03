@@ -1,4 +1,4 @@
-﻿
+
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/CSS/Value_definition_syntax
  * @see https://drafts.csswg.org/css-values/#value-defs
@@ -204,6 +204,7 @@ void css_valdef_parser_destroy(css_valdef_parser_t *parser)
 INLINE void css_valdef_parser_get_char(css_valdef_parser_t *parser)
 {
 	parser->buffer[parser->pos++] = *(parser->cur);
+	parser->buffer[parser->pos] = 0;
 }
 
 static int css_valdef_parser_error(css_valdef_parser_t *parser, const char *fmt,
@@ -441,8 +442,7 @@ static int css_valdef_parser_parse_sign(css_valdef_parser_t *parser)
 				break;
 			}
 		default:
-			return css_valdef_parser_error(
-			    parser, "unknown sign: `%s`\n", parser->buffer);
+			break;
 		}
 		return 0;
 	case '[':
@@ -743,7 +743,7 @@ int css_register_valdef_alias(const char *alias, const char *definitons)
 {
 	css_valdef_t *valdef;
 
-	if (css_get_keyword_key(alias)) {
+	if (css_get_keyword_key(alias) >= 0) {
 		return -1;
 	}
 	valdef = css_compile_valdef(definitons);
