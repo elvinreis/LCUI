@@ -1,4 +1,4 @@
-
+﻿
 /**
  * @see https://developer.mozilla.org/en-US/docs/Web/CSS/Value_definition_syntax
  * @see https://drafts.csswg.org/css-values/#value-defs
@@ -11,6 +11,7 @@
 #include "../include/css/keywords.h"
 #include "../include/css/library.h"
 #include "../include/css/style_value.h"
+#include "../include/css/value.h"
 
 #define CSS_VALDEF_PARSER_ERROR_SIZE 256
 
@@ -35,7 +36,7 @@ struct css_valdef_t {
 	unsigned max_count;
 	const css_valdef_t *source;
 	union {
-		int ident;
+		css_keyword_value_t ident;
 		/** list_t<css_valdef_t> */
 		list_t children;
 		const css_value_type_record_t *type;
@@ -71,6 +72,7 @@ typedef struct css_value_matcher_t {
 	size_t value_str_len;
 
 	css_style_value_t value;
+	css_style_value_t *current_value;
 	unsigned value_len;
 	unsigned index;
 } css_value_matcher_t;
@@ -83,16 +85,34 @@ static struct css_value_module_t {
 	dict_t *types;
 } css_value;
 
-static void css_valdef_destroy(css_valdef_t *valdef)
+static LCUI_BOOL css_valdef_has_children(css_valdef_t *valdef)
 {
 	switch (valdef->sign) {
+	case CSS_VALDEF_SIGN_JUXTAPOSITION:
+	case CSS_VALDEF_SIGN_DOUBLE_AMPERSAND:
 	case CSS_VALDEF_SIGN_DOUBLE_BAR:
 	case CSS_VALDEF_SIGN_SINGLE_BAR:
-		list_destroy(&valdef->children,
-			     (list_item_destructor_t)(css_valdef_destroy));
-		break;
+	case CSS_VALDEF_SIGN_BRACKETS:
+		return TRUE;
 	default:
 		break;
+	}
+	return FALSE;
+}
+
+static void css_valdef_destroy(css_valdef_t *valdef)
+{
+	if (css_valdef_has_children(valdef)) {
+		list_destroy(&valdef->children,
+			     (list_item_destructor_t)(css_valdef_destroy));
+	}
+	free(valdef);
+}
+
+static void css_valdef_shallow_destroy(css_valdef_t *valdef)
+{
+	if (css_valdef_has_children(valdef)) {
+		list_destroy(&valdef->children, NULL);
 	}
 	free(valdef);
 }
@@ -254,6 +274,26 @@ size_t css_valdef_to_string(const css_valdef_t *valdef, char *str,
 }
 
 #undef CHECK_MAX_LEN
+
+static css_valdef_t *css_valdef_shallow_copy(const css_valdef_t *valdef)
+{
+	list_node_t *node;
+	css_valdef_t *copy;
+
+	copy = css_valdef_create(valdef->sign);
+	if (!copy) {
+		return NULL;
+	}
+	*copy = *valdef;
+	if (valdef->sign != CSS_VALDEF_SIGN_NONE &&
+	    valdef->sign != CSS_VALDEF_SIGN_ANGLE_BRACKET) {
+		list_create(&copy->children);
+		for (list_each(node, &valdef->children)) {
+			list_append(&copy->children, node->data);
+		}
+	}
+	return copy;
+}
 
 static void css_valdef_append(css_valdef_t *valdef, css_valdef_t *child)
 {
@@ -486,11 +526,11 @@ static int css_valdef_parser_parse_data_type_end(css_valdef_parser_t *parser)
 		return 0;
 	}
 	parser->valdef->source = css_resolve_valdef_alias(parser->buffer);
-	if (!parser->valdef->source) {
-		return css_valdef_parser_error(
-		    parser, "unknown data type: `%s`\n", parser->buffer);
+	if (parser->valdef->source) {
+		return 0;
 	}
-	return 0;
+	return css_valdef_parser_error(parser, "unknown data type: `%s`\n",
+				       parser->buffer);
 }
 
 static int css_valdef_parser_parse_data_type(css_valdef_parser_t *parser)
@@ -521,6 +561,8 @@ static int css_valdef_parser_parse_sign_end(css_valdef_parser_t *parser)
 		css_valdef_parser_commit(parser, CSS_VALDEF_SIGN_JUXTAPOSITION);
 	} else if (parser->pos == 1 && parser->buffer[0] == '|') {
 		css_valdef_parser_commit(parser, CSS_VALDEF_SIGN_SINGLE_BAR);
+	} else if (parser->pos == 2 && parser->buffer[0] == '|') {
+		css_valdef_parser_commit(parser, CSS_VALDEF_SIGN_DOUBLE_BAR);
 	} else if (parser->pos == 2 && parser->buffer[0] == '&') {
 		css_valdef_parser_commit(parser,
 					 CSS_VALDEF_SIGN_DOUBLE_AMPERSAND);
@@ -604,10 +646,8 @@ static int css_valdef_parser_parse_target(css_valdef_parser_t *parser)
 static size_t css_valdef_parser_parse(css_valdef_parser_t *parser,
 				      const char *str)
 {
-	size_t size = 0;
-
 	parser->cur = str;
-	while (*parser->cur && size < parser->buffer_size) {
+	while (*parser->cur && parser->cur < str + parser->buffer_size) {
 		switch (parser->target) {
 		case CSS_VALDEF_PARSER_TARGET_NONE:
 			css_valdef_parser_parse_target(parser);
@@ -627,26 +667,46 @@ static size_t css_valdef_parser_parse(css_valdef_parser_t *parser,
 			break;
 		}
 		++parser->cur;
-		++size;
 	}
-	return size;
+	return parser->cur - str;
 }
 
 static int css_valdef_parser_finish(css_valdef_parser_t *parser)
 {
+	int ret;
+	css_valdef_t *parent_valdef;
+
 	switch (parser->target) {
 	case CSS_VALDEF_PARSER_TARGET_KEYWORD:
-		return css_valdef_parser_parse_keyword_end(parser);
+		ret = css_valdef_parser_parse_keyword_end(parser);
+		break;
 	case CSS_VALDEF_PARSER_TARGET_DATA_TYPE:
-		return css_valdef_parser_parse_data_type_end(parser);
+		ret = css_valdef_parser_parse_data_type_end(parser);
+		break;
 	case CSS_VALDEF_PARSER_TARGET_SIGN:
-		return css_valdef_parser_parse_sign_end(parser);
+		ret = css_valdef_parser_parse_sign_end(parser);
+		break;
 	case CSS_VALDEF_PARSER_TARGET_ERROR:
 		return -1;
 	default:
 		break;
 	}
-	return 0;
+
+	parent_valdef = css_valdef_parser_get_parent_valdef(parser);
+	return css_valdef_parser_commit(
+	    parser, parent_valdef ? parent_valdef->sign
+				  : CSS_VALDEF_SIGN_JUXTAPOSITION);
+}
+
+static css_valdef_t *css_valdef_parser_get_result(css_valdef_parser_t *parser)
+{
+	css_valdef_t *valdef = NULL;
+
+	if (parser->valdef_parents.length > 0) {
+		valdef = list_get_first_node(&parser->valdef_parents)->data;
+	}
+	list_destroy(&parser->valdef_parents, NULL);
+	return valdef;
 }
 
 css_valdef_t *css_compile_valdef(const char *definition_str)
@@ -665,8 +725,7 @@ css_valdef_t *css_compile_valdef(const char *definition_str)
 		}
 	}
 	css_valdef_parser_finish(parser);
-	valdef = parser->valdef;
-	parser->valdef = NULL;
+	valdef = css_valdef_parser_get_result(parser);
 	css_valdef_parser_destroy(parser);
 	return valdef;
 }
@@ -721,21 +780,21 @@ copy_value_str:
 	strncpy(matcher->value_str, matcher->cur, matcher->value_str_len);
 	matcher->value_str[matcher->value_str_len] = 0;
 
+	if (matcher->value.array_value) {
+		matcher->index++;
+		matcher->value_len++;
+	}
 	list = realloc(matcher->value.array_value,
-		       sizeof(css_style_value_t) * (matcher->value_len + 1));
+		       sizeof(css_style_value_t) * (matcher->value_len + 2));
 	if (!list) {
-		matcher->value_len--;
 		return -1;
 	}
-	if (matcher->value_len > 0) {
-		matcher->index++;
-	} else {
-		list[0].type = CSS_NO_VALUE;
-		list[0].integer_value = 0;
-	}
+	list[matcher->index].type = CSS_NO_VALUE;
+	list[matcher->index].integer_value = 0;
 	list[matcher->value_len].type = CSS_NO_VALUE;
 	list[matcher->value_len].integer_value = 0;
 	matcher->value.array_value = list;
+	matcher->current_value = list + matcher->index;
 	return 0;
 }
 
@@ -783,25 +842,94 @@ static int css_value_matcher_match_data_type(css_value_matcher_t *matcher,
 		css_value_matcher_destroy(submatcher);
 		return css_value_matcher_resolve_next_value(matcher);
 	}
-	if (!valdef->type || valdef->type->parse_value(
-				 matcher->value.array_value + matcher->index,
-				 matcher->value_str) != 0) {
-		return -1;
+	if (valdef->type && valdef->type->parse_value(matcher->current_value,
+						      matcher->value_str)) {
+		matcher->value_len++;
+		return css_value_matcher_resolve_next_value(matcher);
 	}
-	return css_value_matcher_resolve_next_value(matcher);
+	return -1;
+}
+
+/**
+ * @see
+ * https://developer.mozilla.org/en-US/docs/Web/CSS/Value_definition_syntax#double_bar
+ */
+static int css_value_matcher_match_double_bar(css_value_matcher_t *matcher,
+					      const css_valdef_t *valdef)
+{
+	unsigned i = 0;
+	list_node_t *node;
+	css_valdef_t *rest_valdef;
+	css_value_matcher_t *submatcher;
+	char str[256];
+
+	for (list_each(node, &valdef->children)) {
+		css_valdef_to_string(node->data, str, 255);
+		logger_debug("[%u/%zu] matcher->value_str: %s\n", i,
+		       valdef->children.length, matcher->value_str);
+		if (css_value_matcher_match(matcher, node->data) != 0) {
+			i++;
+			logger_debug("[%u/%zu] not matched valdef: %s\n", i,
+			       valdef->children.length, str);
+			continue;
+		}
+		logger_debug("[%u/%zu] matched valdef: %s\n", i,
+		       valdef->children.length, str);
+		submatcher = css_value_matcher_create(matcher->cur +
+						      matcher->value_str_len);
+		logger_debug("[%u/%zu] submatcher->value_str: %s\n", i,
+		       valdef->children.length, submatcher->value_str);
+		// Example:
+		// <border-width> || <border-style> || <border-color>
+		// This example matches the following values:
+		// blue 1em
+		if (submatcher->value_str_len < 1) {
+			css_value_matcher_destroy(submatcher);
+			return 0;
+		}
+		rest_valdef = css_valdef_shallow_copy(valdef);
+		// <border-width> || <border-style> || <border-color>
+		//                          ^
+		//                   matched valdef
+		//
+		// The sub matcher will use the remaining value definitions:
+		// <border-width> || <border-color>
+		list_delete(&rest_valdef->children, i);
+		if (css_value_matcher_match(submatcher, rest_valdef) != 0) {
+			css_value_matcher_destroy(submatcher);
+			css_valdef_shallow_destroy(rest_valdef);
+			i++;
+			continue;
+		}
+		matcher->index += submatcher->index;
+		matcher->cur = submatcher->cur + submatcher->value_str_len;
+		css_array_value_concat(&matcher->value, &submatcher->value);
+		css_value_matcher_destroy(submatcher);
+		css_valdef_shallow_destroy(rest_valdef);
+		return 0;
+	}
+	return 0;
 }
 
 static int css_value_matcher_match(css_value_matcher_t *matcher,
 				   const css_valdef_t *valdef)
 {
 	list_node_t *node;
+	char str[256];
 
+	css_valdef_to_string(valdef, str, 256);
+	str[255] = 0;
+	logger_debug("css_value_matcher_match(matcher<0x%p>, \"%s\")\n", matcher,
+	       str);
 	switch (valdef->sign) {
 	case CSS_VALDEF_SIGN_NONE:
-		if (valdef->ident != css_get_keyword_key(matcher->value_str)) {
+		matcher->current_value->keyword_value =
+		    css_get_keyword_key(matcher->value_str);
+		if (valdef->ident != matcher->current_value->keyword_value) {
 			return -1;
 		}
-		return 0;
+		matcher->current_value->type = CSS_KEYWORD_VALUE;
+		return css_value_matcher_resolve_next_value(matcher);
 	case CSS_VALDEF_SIGN_ANGLE_BRACKET:
 		return css_value_matcher_match_data_type(matcher, valdef);
 	case CSS_VALDEF_SIGN_JUXTAPOSITION:
@@ -819,6 +947,7 @@ static int css_value_matcher_match(css_value_matcher_t *matcher,
 		}
 		return -1;
 	case CSS_VALDEF_SIGN_DOUBLE_BAR:
+		return css_value_matcher_match_double_bar(matcher, valdef);
 	case CSS_VALDEF_SIGN_DOUBLE_AMPERSAND:
 	case CSS_VALDEF_SIGN_BRACKETS:
 		// TODO

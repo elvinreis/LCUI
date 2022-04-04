@@ -203,7 +203,6 @@ typedef enum css_style_value_type_t {
 
 	CSS_UNIT_VALUE,
 	CSS_BOOLEAN_VALUE,
-	CSS_LENGTH_VALUE,
 	CSS_PERCENTAGE_VALUE,
 } css_style_value_type_t;
 

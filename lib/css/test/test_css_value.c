@@ -8,8 +8,9 @@ static void test_css_valdef_none(const css_valdef_t *valdef)
 	int ret;
 	css_style_value_t val;
 
-	ret = css_parse_value(valdef, "none", &val) == 0;
-	if (ret && val.type == CSS_ARRAY_VALUE) {
+	ret = css_parse_value(valdef, "none", &val) == 0 &&
+	      val.type == CSS_ARRAY_VALUE;
+	if (ret) {
 		ret = val.array_value[0].keyword_value ==
 		      css_get_keyword_key("none");
 	}
@@ -19,13 +20,20 @@ static void test_css_valdef_none(const css_valdef_t *valdef)
 
 static void test_css_valdef_none_or_auto(const css_valdef_t *valdef)
 {
+	int ret;
 	css_style_value_t val;
 
-	css_parse_value(valdef, "none", &val);
-	it_b("match('none')", val.keyword_value, css_get_keyword_key("none"));
+	ret = css_parse_value(valdef, "none", &val) == 0 &&
+	      val.type == CSS_ARRAY_VALUE;
+	if (ret) {
+		ret = val.array_value[0].keyword_value ==
+		      css_get_keyword_key("none");
+	}
+	it_b("match('none')", ret, 1);
 
-	css_parse_value(valdef, "auto", &val);
-	it_b("match('auto')", val.keyword_value, css_get_keyword_key("auto"));
+	ret = css_parse_value(valdef, "auto", &val) == 0 &&
+	      val.type == CSS_ARRAY_VALUE;
+	it_b("match('auto')", ret, 1);
 	it_b("notMatch('normal')", css_parse_value(valdef, "normal", &val), -1);
 }
 
@@ -43,23 +51,26 @@ static void test_css_valdef_border(const css_valdef_t *valdef)
 	it_b("match('solid #eee 1px')",
 	     css_parse_value(valdef, "solid #eee 1px", &val), 0);
 
-	ret = css_parse_value(valdef, "1px", &val) == 0;
-	if (ret && val.type == CSS_ARRAY_VALUE) {
-		ret = val.array_value[0].type == CSS_LENGTH_VALUE &&
+	ret = css_parse_value(valdef, "1px", &val) == 0 &&
+	      val.type == CSS_ARRAY_VALUE;
+	if (ret) {
+		ret = val.array_value[0].type == CSS_UNIT_VALUE &&
 		      val.array_value[0].unit_value.value == 1.;
 	}
 	it_b("match('1px')", ret, 1);
 
-	ret = css_parse_value(valdef, "solid", &val) == 0;
-	if (ret && val.type == CSS_ARRAY_VALUE) {
+	ret = css_parse_value(valdef, "solid", &val) == 0 &&
+	      val.type == CSS_ARRAY_VALUE;
+	if (ret) {
 		ret = val.array_value[0].type == CSS_KEYWORD_VALUE &&
 		      val.array_value[0].keyword_value ==
 			  css_get_keyword_key("solid");
 	}
 	it_b("match('solid')", ret, 1);
 
-	ret = css_parse_value(valdef, "#eee", &val) == 0;
-	if (ret && val.type == CSS_ARRAY_VALUE) {
+	ret = css_parse_value(valdef, "#eee", &val) == 0 &&
+	      val.type == CSS_ARRAY_VALUE;
+	if (ret) {
 		ret = ret && val.array_value[0].color_value.r == 238;
 		ret = ret && val.array_value[0].color_value.g == 238;
 		ret = ret && val.array_value[0].color_value.b == 238;

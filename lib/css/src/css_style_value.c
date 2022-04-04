@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
+#include "../include/css/keywords.h"
 #include "../include/css/style_value.h"
 #include "../include/css/library.h"
 
@@ -30,7 +31,7 @@ size_t css_array_value_get_length(css_style_value_t *val)
 {
 	size_t len;
 
-	for (len = 0; val->array_value[len].type == CSS_NO_VALUE; ++len)
+	for (len = 0; val->array_value[len].type != CSS_NO_VALUE; ++len)
 		;
 	return len;
 }

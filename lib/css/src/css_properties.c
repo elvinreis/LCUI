@@ -30,20 +30,24 @@ static int css_register_property_with_key(unsigned key, const char *name,
 					  const char *syntax,
 					  const char *initial_value)
 {
+	unsigned i;
 	css_property_definition_t *prop;
 	css_property_definition_t **props;
 
 	if (key >= css_properties.length) {
 		props = realloc(css_properties.list,
-				key * sizeof(css_property_definition_t *));
+				(key + 1) * sizeof(css_property_definition_t *));
 		if (!props) {
 			return -1;
+		}
+		for (i = css_properties.length; i <= key; ++i) {
+			props[i] = NULL;
 		}
 		css_properties.list = props;
 		css_properties.length = key;
 	}
 	prop = malloc(sizeof(css_property_definition_t));
-	if (prop) {
+	if (!prop) {
 		return -1;
 	}
 	// TODO
@@ -453,9 +457,11 @@ void css_destroy_properties(void)
 
 	dict_destroy(css_properties.map);
 	for (i = 0; i < css_properties.length; ++i) {
-		free(css_properties.list[i]->name);
-		css_style_value_destroy(&css_properties.list[i]->initial_value);
-		css_properties.list[i] = NULL;
+		if (css_properties.list[i]) {
+			free(css_properties.list[i]->name);
+			css_style_value_destroy(&css_properties.list[i]->initial_value);
+			css_properties.list[i] = NULL;
+		}
 	}
 	free(css_properties.list);
 	css_properties.map = NULL;
