@@ -146,6 +146,115 @@ static css_valdef_t *css_valdef_create(css_valdef_sign_t sign)
 	return valdef;
 }
 
+#define CHECK_MAX_LEN()       \
+	if (len >= max_len) { \
+		break;        \
+	}
+
+size_t css_valdef_to_string(const css_valdef_t *valdef, char *str,
+			    size_t max_len)
+{
+	size_t len = 0, i = 0;
+	list_node_t *node;
+	const char *name;
+	char *p = str;
+
+	switch (valdef->sign) {
+	case CSS_VALDEF_SIGN_NONE:
+		name = css_get_keyword_name(valdef->ident);
+		if (!name) {
+			name = "unknown";
+		}
+		len = strlen(name);
+		strncpy(str, name, max_len);
+		str[max_len - 1] = 0;
+		len = y_min(len, max_len);
+		break;
+	case CSS_VALDEF_SIGN_ANGLE_BRACKET:
+		CHECK_MAX_LEN();
+		strncpy(p++, "<", max_len);
+		name = valdef->type ? valdef->type->name : "unknown-type";
+		len = strlen(name);
+		len = y_min(max_len - 1, len);
+		strncpy(p, name, max_len - 1);
+		len++;
+		CHECK_MAX_LEN();
+		p = str + len;
+		strncpy(p, ">", max_len - len);
+		len++;
+		break;
+	case CSS_VALDEF_SIGN_JUXTAPOSITION:
+		for (list_each(node, &valdef->children)) {
+			CHECK_MAX_LEN();
+			p = str + len;
+			len +=
+			    css_valdef_to_string(node->data, p, max_len - len);
+			if (i + 1 < valdef->children.length) {
+				CHECK_MAX_LEN();
+				p = str + len;
+				strncpy(p, " ", max_len - len);
+				len++;
+			}
+			i++;
+		}
+		break;
+	case CSS_VALDEF_SIGN_SINGLE_BAR:
+		for (list_each(node, &valdef->children)) {
+			CHECK_MAX_LEN();
+			p = str + len;
+			len +=
+			    css_valdef_to_string(node->data, p, max_len - len);
+			if (i + 1 < valdef->children.length) {
+				p = str + len;
+				strncpy(p, " | ", max_len - len);
+				len += 3;
+			}
+			i++;
+		}
+		break;
+	case CSS_VALDEF_SIGN_DOUBLE_BAR:
+		for (list_each(node, &valdef->children)) {
+			CHECK_MAX_LEN();
+			p = str + len;
+			len +=
+			    css_valdef_to_string(node->data, p, max_len - len);
+			if (i + 1 < valdef->children.length) {
+				CHECK_MAX_LEN();
+				p = str + len;
+				strncpy(p, " || ", max_len - len);
+				len += 4;
+			}
+			i++;
+		}
+		break;
+	case CSS_VALDEF_SIGN_DOUBLE_AMPERSAND:
+		for (list_each(node, &valdef->children)) {
+			CHECK_MAX_LEN();
+			p = str + len;
+			len +=
+			    css_valdef_to_string(node->data, p, max_len - len);
+			p = str + len;
+			if (i + 1 < valdef->children.length) {
+				CHECK_MAX_LEN();
+				p = str + len;
+				strncpy(p, " && ", max_len - len);
+				len += 4;
+			}
+			i++;
+		}
+		break;
+	default:
+		name = "unknown syntax";
+		strncpy(str, name, max_len);
+		len = strlen(name);
+		len = y_min(len, max_len);
+		break;
+	}
+	return len;
+}
+
+#undef CHECK_MAX_LEN
+
 static void css_valdef_append(css_valdef_t *valdef, css_valdef_t *child)
 {
 	assert(valdef->sign != CSS_VALDEF_SIGN_NONE &&
