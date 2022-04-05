@@ -78,6 +78,33 @@ static void test_css_valdef_border(const css_valdef_t *valdef)
 	it_b("match('#eee')", ret, 1);
 }
 
+static void test_css_valdef_border_2(const css_valdef_t *valdef)
+{
+	int ret;
+	css_style_value_t val;
+
+	it_b("match('1px solid #eee')",
+	     css_parse_value(valdef, "1px solid #eee", &val), 0);
+
+	it_b("match('#eee 1px solid')",
+	     css_parse_value(valdef, "#eee 1px solid", &val), 0);
+
+	it_b("match('solid #eee 1px')",
+	     css_parse_value(valdef, "solid #eee 1px", &val), 0);
+
+	ret = css_parse_value(valdef, "1px", &val) == 0 &&
+	      val.type == CSS_ARRAY_VALUE;
+	it_b("notMatch('1px')", ret, 0);
+
+	ret = css_parse_value(valdef, "solid", &val) == 0 &&
+	      val.type == CSS_ARRAY_VALUE;
+	it_b("notMatch('solid')", ret, 0);
+
+	ret = css_parse_value(valdef, "#eee", &val) == 0 &&
+	      val.type == CSS_ARRAY_VALUE;
+	it_b("notMatch('solid')", ret, 0);
+}
+
 static void test_css_valdef(const char *definition,
 			    void (*func)(const css_valdef_t *))
 {
@@ -108,5 +135,7 @@ void test_css_value(void)
 	css_register_valdef_alias("line-style", "none | solid");
 	test_css_valdef("<line-width> || <line-style> || <color>",
 			test_css_valdef_border);
+	test_css_valdef("<line-width> && <line-style> && <color>",
+			test_css_valdef_border_2);
 	css_destroy();
 }

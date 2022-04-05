@@ -70,9 +70,28 @@ CSS 值定义的数据结构应表达以下内容：
 
   针对不同类型的值定义来分别处理。
 
-- **匹配成功时如何切换到下一个值？**
+- **如何切换到下一个值？**
 
-  匹配成功时，从值的终点开始遍历查找下个值的起点和终点，然后传给匹配函数。
+  从值的终点开始遍历查找下个值的起点和终点，然后传给匹配函数。
+
+- **什么情况下切换到下一个值？**
+
+  - DOUBLE BAR
+  - DOUBLE AMPERSAND
+  - JUXTAPOSITION
+
+  需要注意的是，必须在开始解析下个值之前进行切换而不是每次解析完后切换，否则多余的切换会导致整个解析结果错误。
+
+  ```diff
+  + if (i > 0) {
+  +     css_value_matcher_resolve_next_value(matcher);
+  + }
+    if (css_value_matcher_match(matcher, node->data) != 0) {
+        return -1;
+    }
+  - css_value_matcher_resolve_next_value(matcher);
+  + i++;
+  ```
 
 - **匹配失败时如何切换到下个规则？**
 
