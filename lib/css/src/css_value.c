@@ -48,6 +48,7 @@ typedef enum css_valdef_parser_target_t {
 	CSS_VALDEF_PARSER_TARGET_ERROR,
 	CSS_VALDEF_PARSER_TARGET_KEYWORD,
 	CSS_VALDEF_PARSER_TARGET_DATA_TYPE,
+	CSS_VALDEF_PARSER_TARGET_CURLY_BRACE,
 	CSS_VALDEF_PARSER_TARGET_SIGN
 } css_valdef_parser_target_t;
 
@@ -506,6 +507,7 @@ static int css_valdef_parser_parse_keyword(css_valdef_parser_t *parser)
 	case '[':
 	case ']':
 	case '<':
+	case '{':
 		break;
 	case '>':
 		return css_valdef_parser_error(parser, "syntax error");
@@ -606,11 +608,52 @@ static int css_valdef_parser_parse_sign(css_valdef_parser_t *parser)
 		//       |
 		//      cur
 		return 0;
+	case '{':
+	case '}':
+		return css_valdef_parser_error(parser, "syntax error");
 	default:
 		parser->target = CSS_VALDEF_PARSER_TARGET_KEYWORD;
 		break;
 	}
 	return css_valdef_parser_parse_sign_end(parser);
+}
+
+static int css_valdef_parser_parse_curly_brace(css_valdef_parser_t *parser)
+{
+	switch (*parser->cur) {
+	case '0':
+	case '1':
+	case '2':
+	case '3':
+	case '4':
+	case '5':
+	case '6':
+	case '7':
+	case '8':
+	case '9':
+	case ',':
+	CASE_WHITE_SPACE:
+		css_valdef_parser_get_char(parser);
+		return 0;
+	case '{':
+		return 0;
+	case '}':
+		break;
+	default:
+		return -1;
+	}
+	if (sscanf(parser->buffer, "%u,%u", &parser->valdef->min_count,
+		   &parser->valdef->max_count) == 2) {
+		parser->target = CSS_VALDEF_PARSER_TARGET_NONE;
+		return 0;
+	}
+	if (sscanf(parser->buffer, "%u", &parser->valdef->min_count) == 1) {
+		parser->valdef->max_count = parser->valdef->min_count;
+		parser->target = CSS_VALDEF_PARSER_TARGET_NONE;
+		return 0;
+	}
+	return css_valdef_parser_error(parser, "syntax error: %s\n",
+				       parser->buffer);
 }
 
 static int css_valdef_parser_parse_target(css_valdef_parser_t *parser)
@@ -632,6 +675,9 @@ static int css_valdef_parser_parse_target(css_valdef_parser_t *parser)
 	case ']':
 		return css_valdef_parser_close_bracket(parser);
 	case '{':
+		css_valdef_parser_reset_target(parser);
+		parser->target = CSS_VALDEF_PARSER_TARGET_CURLY_BRACE;
+		break;
 	case '}':
 	case '>':
 		return css_valdef_parser_error(parser, "syntax error");
@@ -660,6 +706,8 @@ static size_t css_valdef_parser_parse(css_valdef_parser_t *parser,
 			break;
 		case CSS_VALDEF_PARSER_TARGET_KEYWORD:
 			css_valdef_parser_parse_keyword(parser);
+		case CSS_VALDEF_PARSER_TARGET_CURLY_BRACE:
+			css_valdef_parser_parse_curly_brace(parser);
 			break;
 		case CSS_VALDEF_PARSER_TARGET_ERROR:
 			break;
@@ -970,8 +1018,8 @@ static int css_value_matcher_submatch(css_value_matcher_t *matcher,
 	return -1;
 }
 
-static int css_value_matcher_match(css_value_matcher_t *matcher,
-				   const css_valdef_t *valdef)
+static int css_value_matcher_match_once(css_value_matcher_t *matcher,
+					const css_valdef_t *valdef)
 {
 	size_t i = 0;
 	list_node_t *node;
@@ -1020,6 +1068,22 @@ static int css_value_matcher_match(css_value_matcher_t *matcher,
 	default:
 		return -1;
 	}
+}
+
+static int css_value_matcher_match(css_value_matcher_t *matcher,
+				   const css_valdef_t *valdef)
+{
+	unsigned i;
+
+	for (i = 0; i < valdef->max_count; ++i) {
+		if (i > 0) {
+			css_value_matcher_resolve_next_value(matcher);
+		}
+		if (css_value_matcher_match_once(matcher, valdef) != 0) {
+			break;
+		}
+	}
+	return i >= valdef->min_count ? 0 : -1;
 }
 
 int css_parse_value(const css_valdef_t *valdef, const char *str,
