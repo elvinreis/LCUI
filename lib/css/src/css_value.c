@@ -48,13 +48,15 @@ typedef enum css_valdef_parser_target_t {
 	CSS_VALDEF_PARSER_TARGET_ERROR,
 	CSS_VALDEF_PARSER_TARGET_KEYWORD,
 	CSS_VALDEF_PARSER_TARGET_DATA_TYPE,
-	CSS_VALDEF_PARSER_TARGET_CURLY_BRACE,
+	CSS_VALDEF_PARSER_TARGET_CURLY_BRACES,
+	CSS_VALDEF_PARSER_TARGET_BRACKETS,
 	CSS_VALDEF_PARSER_TARGET_SIGN
 } css_valdef_parser_target_t;
 
 typedef struct css_valdef_parser_t {
 	const char *cur;
 	char *buffer;
+	char terminator;
 	size_t pos;
 	size_t buffer_size;
 	css_valdef_parser_target_t target;
@@ -226,6 +228,7 @@ size_t css_valdef_to_string(const css_valdef_t *valdef, char *str,
 			len +=
 			    css_valdef_to_string(node->data, p, max_len - len);
 			if (i + 1 < valdef->children.length) {
+				CHECK_MAX_LEN();
 				p = str + len;
 				strncpy(p, " | ", max_len - len);
 				len += 3;
@@ -263,6 +266,28 @@ size_t css_valdef_to_string(const css_valdef_t *valdef, char *str,
 			}
 			i++;
 		}
+		break;
+	case CSS_VALDEF_SIGN_BRACKETS:
+		CHECK_MAX_LEN();
+		strncpy(p, "[", max_len);
+		len++;
+		for (list_each(node, &valdef->children)) {
+			CHECK_MAX_LEN();
+			p = str + len;
+			len +=
+			    css_valdef_to_string(node->data, p, max_len - len);
+			if (i + 1 < valdef->children.length) {
+				CHECK_MAX_LEN();
+				p = str + len;
+				strncpy(p, " ", max_len - len);
+				len++;
+			}
+			i++;
+		}
+		CHECK_MAX_LEN();
+		p = str + len;
+		strncpy(p, "]", max_len - len);
+		len++;
 		break;
 	default:
 		name = "unknown syntax";
@@ -332,7 +357,8 @@ const css_valdef_t *css_resolve_valdef_alias(const char *alias)
 	return dict_fetch_value(css_value.alias, alias);
 }
 
-css_valdef_parser_t *css_valdef_parser_create(size_t buffer_size)
+css_valdef_parser_t *css_valdef_parser_create(size_t buffer_size,
+					      char terminator)
 {
 	css_valdef_parser_t *parser;
 
@@ -340,8 +366,10 @@ css_valdef_parser_t *css_valdef_parser_create(size_t buffer_size)
 	parser->buffer = calloc(sizeof(char), buffer_size);
 	parser->buffer_size = buffer_size;
 	parser->target = CSS_VALDEF_PARSER_TARGET_NONE;
-	parser->valdef = NULL;
+	parser->terminator = terminator;
 	list_create(&parser->valdef_parents);
+	list_append(&parser->valdef_parents,
+		    css_valdef_create(CSS_VALDEF_SIGN_JUXTAPOSITION));
 	return parser;
 }
 
@@ -374,9 +402,8 @@ static int css_valdef_parser_error(css_valdef_parser_t *parser, const char *fmt,
 INLINE css_valdef_t *css_valdef_parser_get_parent_valdef(
     css_valdef_parser_t *parser)
 {
-	return parser->valdef_parents.tail.prev
-		   ? parser->valdef_parents.tail.prev->data
-		   : NULL;
+	assert(parser->valdef_parents.tail.prev);
+	return parser->valdef_parents.tail.prev->data;
 }
 
 INLINE void css_valdef_parser_reset_target(css_valdef_parser_t *parser)
@@ -401,7 +428,7 @@ static int css_valdef_parser_commit(css_valdef_parser_t *parser,
 		return 0;
 	}
 	parent_valdef = css_valdef_parser_get_parent_valdef(parser);
-	if (parent_valdef && parent_valdef->sign == sign) {
+	if (parent_valdef->sign == sign) {
 		css_valdef_append(parent_valdef, parser->valdef);
 	} else {
 		// Before:
@@ -430,54 +457,26 @@ static int css_valdef_parser_commit(css_valdef_parser_t *parser,
 	return 0;
 }
 
-static int css_valdef_parser_open_bracket(css_valdef_parser_t *parser)
-{
-	css_valdef_t *parent_valdef;
-	css_valdef_t *group;
+static css_valdef_t *css_valdef_parser_parse(css_valdef_parser_t *parser,
+					     const char *definition_str);
 
-	group = css_valdef_create(CSS_VALDEF_SIGN_BRACKETS);
-	if (!group) {
+static int css_valdef_parser_parse_brackets(css_valdef_parser_t *parser)
+{
+	css_valdef_t *brackets_inner;
+	css_valdef_parser_t *subparser;
+
+	subparser = css_valdef_parser_create(parser->buffer_size, ']');
+	brackets_inner = css_valdef_parser_parse(subparser, parser->cur);
+	if (!brackets_inner) {
+		css_valdef_parser_error(parser, subparser->error);
+		css_valdef_parser_destroy(subparser);
 		return -1;
 	}
-	if (parser->valdef) {
-		// Example:
-		// <length> [none | auto]
-		//          ^
-		//          |
-		//         cur
-		css_valdef_parser_commit(parser, CSS_VALDEF_SIGN_JUXTAPOSITION);
-	}
-	parent_valdef = css_valdef_parser_get_parent_valdef(parser);
-	if (parent_valdef) {
-		css_valdef_append(parent_valdef, group);
-	}
-	list_append(&parser->valdef_parents, group);
-	return 0;
-}
-
-static int css_valdef_parser_close_bracket(css_valdef_parser_t *parser)
-{
-	css_valdef_t *parent_valdef;
-
-	parent_valdef = css_valdef_parser_get_parent_valdef(parser);
-	if (!parent_valdef) {
-		return css_valdef_parser_error(parser, "syntax error");
-	}
-	// Example:
-	// <length> [none]
-	//               ^
-	//               |
-	//              cur
-	css_valdef_parser_commit(parser, parent_valdef->sign);
-	while (parent_valdef &&
-	       parent_valdef->sign != CSS_VALDEF_SIGN_BRACKETS) {
-		list_delete_last(&parser->valdef_parents);
-		parent_valdef = css_valdef_parser_get_parent_valdef(parser);
-	}
-	if (!parent_valdef) {
-		return css_valdef_parser_error(parser, "syntax error");
-	}
-	list_delete_last(&parser->valdef_parents);
+	parser->cur = subparser->cur;
+	parser->target = CSS_VALDEF_PARSER_TARGET_NONE;
+	parser->valdef = css_valdef_create(CSS_VALDEF_SIGN_BRACKETS);
+	css_valdef_append(parser->valdef, brackets_inner);
+	css_valdef_parser_destroy(subparser);
 	return 0;
 }
 
@@ -618,7 +617,7 @@ static int css_valdef_parser_parse_sign(css_valdef_parser_t *parser)
 	return css_valdef_parser_parse_sign_end(parser);
 }
 
-static int css_valdef_parser_parse_curly_brace(css_valdef_parser_t *parser)
+static int css_valdef_parser_parse_curly_braces(css_valdef_parser_t *parser)
 {
 	switch (*parser->cur) {
 	case '0':
@@ -656,7 +655,7 @@ static int css_valdef_parser_parse_curly_brace(css_valdef_parser_t *parser)
 				       parser->buffer);
 }
 
-static int css_valdef_parser_parse_target(css_valdef_parser_t *parser)
+static int css_valdef_parser_resolve_target(css_valdef_parser_t *parser)
 {
 	switch (*parser->cur) {
 	case '|':
@@ -669,14 +668,11 @@ static int css_valdef_parser_parse_target(css_valdef_parser_t *parser)
 		parser->target = CSS_VALDEF_PARSER_TARGET_DATA_TYPE;
 		break;
 	case '[':
-		// TODO:
-		// none | [left | right]
-		return css_valdef_parser_open_bracket(parser);
-	case ']':
-		return css_valdef_parser_close_bracket(parser);
+		parser->target = CSS_VALDEF_PARSER_TARGET_BRACKETS;
+		break;
 	case '{':
 		css_valdef_parser_reset_target(parser);
-		parser->target = CSS_VALDEF_PARSER_TARGET_CURLY_BRACE;
+		parser->target = CSS_VALDEF_PARSER_TARGET_CURLY_BRACES;
 		break;
 	case '}':
 	case '>':
@@ -689,34 +685,43 @@ static int css_valdef_parser_parse_target(css_valdef_parser_t *parser)
 	return 0;
 }
 
-static size_t css_valdef_parser_parse(css_valdef_parser_t *parser,
-				      const char *str)
+static size_t css_valdef_parser_parse_next(css_valdef_parser_t *parser)
 {
-	parser->cur = str;
-	while (*parser->cur && parser->cur < str + parser->buffer_size) {
+	const char *start = parser->cur;
+
+	// printf("parse: %s\n", parser->cur);
+	while (*parser->cur && *parser->cur != parser->terminator) {
+		if (parser->cur >= start + parser->buffer_size) {
+			++parser->cur;
+			break;
+		}
 		switch (parser->target) {
 		case CSS_VALDEF_PARSER_TARGET_NONE:
-			css_valdef_parser_parse_target(parser);
+			css_valdef_parser_resolve_target(parser);
 			break;
 		case CSS_VALDEF_PARSER_TARGET_SIGN:
 			css_valdef_parser_parse_sign(parser);
+			break;
+		case CSS_VALDEF_PARSER_TARGET_BRACKETS:
+			css_valdef_parser_parse_brackets(parser);
 			break;
 		case CSS_VALDEF_PARSER_TARGET_DATA_TYPE:
 			css_valdef_parser_parse_data_type(parser);
 			break;
 		case CSS_VALDEF_PARSER_TARGET_KEYWORD:
 			css_valdef_parser_parse_keyword(parser);
-		case CSS_VALDEF_PARSER_TARGET_CURLY_BRACE:
-			css_valdef_parser_parse_curly_brace(parser);
+			break;
+		case CSS_VALDEF_PARSER_TARGET_CURLY_BRACES:
+			css_valdef_parser_parse_curly_braces(parser);
 			break;
 		case CSS_VALDEF_PARSER_TARGET_ERROR:
-			break;
+			return 0;
 		default:
 			break;
 		}
 		++parser->cur;
 	}
-	return parser->cur - str;
+	return parser->cur - start;
 }
 
 static int css_valdef_parser_finish(css_valdef_parser_t *parser)
@@ -739,41 +744,40 @@ static int css_valdef_parser_finish(css_valdef_parser_t *parser)
 	default:
 		break;
 	}
-
 	parent_valdef = css_valdef_parser_get_parent_valdef(parser);
-	return css_valdef_parser_commit(
-	    parser, parent_valdef ? parent_valdef->sign
-				  : CSS_VALDEF_SIGN_JUXTAPOSITION);
+	return css_valdef_parser_commit(parser, parent_valdef->sign);
 }
 
 static css_valdef_t *css_valdef_parser_get_result(css_valdef_parser_t *parser)
 {
 	css_valdef_t *valdef = NULL;
 
-	if (parser->valdef_parents.length > 0) {
-		valdef = list_get_first_node(&parser->valdef_parents)->data;
-	}
+	assert(parser->valdef_parents.length > 0);
+	valdef = list_get_first_node(&parser->valdef_parents)->data;
 	list_destroy(&parser->valdef_parents, NULL);
 	return valdef;
 }
 
-css_valdef_t *css_compile_valdef(const char *definition_str)
+static css_valdef_t *css_valdef_parser_parse(css_valdef_parser_t *parser,
+					     const char *definition_str)
 {
-	size_t len;
-	const char *p;
-	css_valdef_t *valdef;
-	css_valdef_parser_t *parser;
-
-	parser = css_valdef_parser_create(512);
-	for (len = 1, p = definition_str; len > 0; p += len) {
-		len = css_valdef_parser_parse(parser, p);
+	parser->cur = definition_str;
+	while (css_valdef_parser_parse_next(parser) > 0) {
 		if (parser->target == CSS_VALDEF_PARSER_TARGET_ERROR) {
-			css_valdef_parser_destroy(parser);
 			return NULL;
 		}
 	}
 	css_valdef_parser_finish(parser);
-	valdef = css_valdef_parser_get_result(parser);
+	return css_valdef_parser_get_result(parser);
+}
+
+css_valdef_t *css_compile_valdef(const char *definition_str)
+{
+	css_valdef_t *valdef;
+	css_valdef_parser_t *parser;
+
+	parser = css_valdef_parser_create(512, 0);
+	valdef = css_valdef_parser_parse(parser, definition_str);
 	css_valdef_parser_destroy(parser);
 	return valdef;
 }
@@ -1037,10 +1041,11 @@ static int css_value_matcher_match_once(css_value_matcher_t *matcher,
 			return -1;
 		}
 		matcher->current_value->type = CSS_KEYWORD_VALUE;
-		return 0;
+		break;
 	case CSS_VALDEF_SIGN_ANGLE_BRACKET:
 		return css_value_matcher_match_data_type(matcher, valdef);
 	case CSS_VALDEF_SIGN_JUXTAPOSITION:
+	case CSS_VALDEF_SIGN_BRACKETS:
 		for (list_each(node, &valdef->children)) {
 			if (i > 0) {
 				css_value_matcher_resolve_next_value(matcher);
@@ -1050,24 +1055,35 @@ static int css_value_matcher_match_once(css_value_matcher_t *matcher,
 			}
 			i++;
 		}
-		return 0;
+		break;
 	case CSS_VALDEF_SIGN_SINGLE_BAR:
 		for (list_each(node, &valdef->children)) {
+			css_valdef_to_string(node->data, str, 256);
 			if (css_value_matcher_match(matcher, node->data) == 0) {
-				return 0;
+				logger_debug("[%u/%zu] matched valdef: %s\n", i,
+					     valdef->children.length, str);
+				break;
 			}
+			logger_debug("[%u/%zu] not matched valdef: %s\n", i,
+				     valdef->children.length, str);
+			++i;
 		}
 		return -1;
 	case CSS_VALDEF_SIGN_DOUBLE_BAR:
-		return css_value_matcher_match_double_bar(matcher, valdef);
+		if (css_value_matcher_match_double_bar(matcher, valdef) != 0) {
+			return -1;
+		}
+		break;
 	case CSS_VALDEF_SIGN_DOUBLE_AMPERSAND:
-		return css_value_matcher_match_double_ampersand(matcher,
-								valdef);
-	case CSS_VALDEF_SIGN_BRACKETS:
-		// TODO
+		if (css_value_matcher_match_double_ampersand(matcher, valdef) !=
+		    0) {
+			return -1;
+		}
+		break;
 	default:
 		return -1;
 	}
+	return 0;
 }
 
 static int css_value_matcher_match(css_value_matcher_t *matcher,
@@ -1114,6 +1130,9 @@ int css_register_valdef_alias(const char *alias, const char *definitons)
 	}
 	valdef = css_compile_valdef(definitons);
 	if (valdef) {
+		char str[1024] = { 0 };
+		css_valdef_to_string(valdef, str, 1023);
+		printf("%s\n", str);
 		return dict_add(css_value.alias, (void *)alias, valdef);
 	}
 	return -3;
