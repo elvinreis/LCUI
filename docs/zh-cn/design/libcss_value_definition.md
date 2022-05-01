@@ -2,6 +2,8 @@
 
 CSS 解析库。
 
+（内容待完善）
+
 ## 需求
 
 添加新的 CSS 属性注册函数，支持使用 [CSS属性值定义语法
@@ -56,64 +58,83 @@ CSS 值定义的数据结构应表达以下内容：
 
 ### 解析器
 
+解析器初始创建一个根结点，类型为 Juxtaposition。
+
+对于相同类型的结点，解析后将它们存放在同一个数组中，例如：
+
+```text
+left | center | right
+```
+
+解析结果是：
+
+```js
+SingleBar(["left", "center", "right"])
+```
+
+#### 解析方括号组合器
+
+在添加支持方括号之前，解析的都是 `none | auto` `<length> || <line-style> || <line-width>` 这种线性且类型单一的定义，对解析结果的操作类似于对数组操作，但有了方括号后，数据结构变成了树形，需要操作父子结点，这似乎变得复杂了一点，为此我们不得不重新思考现有的设计是否符合解析方括号的需求。
+
+方括号包住的是值定义，因此可以采用递归的方式对方括号内的值定义进行解析，不过与常规的以 `\0` 为终止符的解析方式不同，方括号的终止符是 `]`，为此我们需要让解析器支持自定义终止符。
+
+由此我们可以得出方括号的解析流程是在遇到 `[` 时创建子解析器，设置其结束符为 `]`，在子解析器解析完后将它的结果合并进当前的结果中。
+
 ### 匹配器
 
-匹配器需要解决的问题如下：
+匹配器的工作流程是先从字符串中读入值，然后将之与值定义进行匹配。
 
-- **如何确定每个值的边界？**
+#### 读取值
 
-  每个值都以空白符为终点，在判定终点时需要考虑到被单引号或双引号的字符串，例如：`"Microsoft YaHei"`。
+字符串中的每个值都由空白符分隔，在判定分隔点时需要考虑到被单引号或双引号的字符串，例如：`"Microsoft YaHei"`，处理引号的方式很简单：对其进行计数，当遇到空白符时，如果计数为 0 则判定为分隔点，否则继续读取下个字符。
 
-  虽然预先分割所有值是个简单直接的做法，但它需要更多的读写操作、内存分配和释放操作，所以出于性能上的考虑，应使用两个变量来记录值的起始和结束位置。
+虽然预先分割所有值是个简单且便于后续操作的做法，但它需要更多的读写操作、内存分配和释放操作，所以出于性能上的考虑，我们应该在匹配新的值定义之前读取一个值。
 
-- **如何匹配值？**
+需要特别注意的是，必须在开始解析下个值之前进行切换而不是每次解析完后切换，否则多余的切换会导致整个解析结果错误。
 
-  针对不同类型的值定义来分别处理。
-
-- **如何切换到下一个值？**
-
-  从值的终点开始遍历查找下个值的起点和终点，然后传给匹配函数。
-
-- **什么情况下切换到下一个值？**
-
-  - DOUBLE BAR
-  - DOUBLE AMPERSAND
-  - JUXTAPOSITION
-
-  需要注意的是，必须在开始解析下个值之前进行切换而不是每次解析完后切换，否则多余的切换会导致整个解析结果错误。
-
-  ```diff
-  + if (i > 0) {
-  +     css_value_matcher_resolve_next_value(matcher);
-  + }
-    if (css_value_matcher_match(matcher, node->data) != 0) {
-        return -1;
-    }
-  - css_value_matcher_resolve_next_value(matcher);
-  + i++;
-  ```
-
-- **匹配失败时如何切换到下个规则？**
-
-  匹配失败时返回失败值，上级函数靠判断该值来决定是否使用下个规则。
-
-- **如何存储已匹配的值？**
-
-  将已匹配的值存为数组，然后给匹配函数增加一个用于记录下标的参数。
-
-结合上述问题解决方案，可得出如下数据结构：
-
-```c
-struct css_value_matching_context_t {
-  const char *value_str;
-  unsigned value_str_len;
-
-  css_style_value_t value;
-  unsigned index;
-};
+```diff
++ if (i > 0) {
++     css_value_matcher_resolve_next_value(matcher);
++ }
+  if (css_value_matcher_match(matcher, node->data) != 0) {
+      return -1;
+  }
+- css_value_matcher_resolve_next_value(matcher);
++ i++;
 ```
 
-匹配过程的伪代码如下：
+### 存储匹配的值
 
-```c
+将已匹配的值存为数组，然后给匹配函数增加一个用于记录下标的参数。
+
+#### 匹配复杂的定义
+
+首先看 background-position 的值定义：
+
+```text
+[
+  [ left | center | right | top | bottom | <length-percentage> ]
+  | [ left | center | right | <length-percentage> ]
+    [ top | center | bottom | <length-percentage> ]
+  | [ center | [ left | right ] <length-percentage>? ]
+    && [ center | [ top | bottom ] <length-percentage>? ]
+]
 ```
+
+将它拆分开来的话会比较好理解：
+
+```text
+[ left | center | right | top | bottom | <length-percentage> ]
+```
+
+```text
+[ left | center | right | <length-percentage> ] [ top | center | bottom | <length-percentage> ]
+```
+
+```text
+[ center | [ left | right ] <length-percentage>? ] && [ center | [ top | bottom ] <length-percentage>? ]
+```
+
+假设我们现在要匹配 `top center`，期望匹配器将该值与第二个值定义匹配，但按照现有的设计，匹配器会判定 `top center` 与第一个值定义匹配，因为它在匹配完 top 后没有判断值与值定义的数量是否相同。如何追加这个判断？根匹配器由于独占整个字符串，可以根据是否还有剩余未匹配的值来判断是否完全匹配，但子匹配器可以只匹配字符串中部分值，并不适合采用这种方式来判断。
+
+这个问题的本质在于单杆匹配器匹配的是第一个值定义而不是匹配度最高的值定义，那么解决方法就是给它增加匹配度判断，选择匹配度最高的结果返回，最后由根匹配器根据是否还有剩余未匹配的值来判断是否完全匹配，这样就能解决上述复杂值定义的匹配问题。
